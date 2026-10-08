@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "runtime-swimlane.schema.json",
+  "title": "Runtime Swimlane Semantic Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "map",
+    "lanes",
+    "steps",
+    "flows"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "map": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "scenario": {
+          "type": "string"
+        },
+        "startStepId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endStepId": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "lanes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "object",
+              "system",
+              "module",
+              "thread",
+              "other"
+            ]
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "laneId",
+          "order",
+          "symbol",
+          "symbolKind",
+          "action",
+          "kind",
+          "confidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "laneId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "symbol": {
+            "type": "string",
+            "minLength": 1
+          },
+          "symbolKind": {
+            "enum": [
+              "class",
+              "struct",
+              "interface",
+              "enum",
+              "namespace",
+              "function",
+              "method",
+              "module",
+              "target",
+              "other"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phase": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "call",
+              "work",
+              "decision",
+              "state_change",
+              "async",
+              "return",
+              "other"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "confirmed",
+              "inferred",
+              "unresolved"
+            ]
+          },
+          "definition": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "confidence": {
+                  "const": "confirmed"
+                }
+              },
+              "required": [
+                "confidence"
+              ]
+            },
+            "then": {
+              "required": [
+                "evidence"
+              ],
+              "properties": {
+                "evidence": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "flowKind",
+          "confidence"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1
+          },
+          "flowKind": {
+            "enum": [
+              "call",
+              "return",
+              "continue",
+              "branch",
+              "async_submit",
+              "async_complete",
+              "handoff",
+              "publish",
+              "skip"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "confirmed",
+              "inferred",
+              "unresolved"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "confidence": {
+                  "const": "confirmed"
+                }
+              },
+              "required": [
+                "confidence"
+              ]
+            },
+            "then": {
+              "required": [
+                "evidence"
+              ],
+              "properties": {
+                "evidence": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$comment": "Lane/step uniqueness, endpoint existence and temporal ordering are checked beyond JSON Schema."
+}

@@ -1,0 +1,731 @@
+<!doctype html>
+<!-- Author: chenhh -->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>运行时泳道图</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #fff;
+      --text: #1b2538;
+      --muted: #667085;
+      --line: #d8deea;
+      --accent: #2765d8;
+      --danger: #b42318;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled, select:disabled { cursor: default; opacity: .5; }
+    [hidden] { display: none !important; }
+    .app { display: grid; grid-template-rows: auto auto minmax(0, 1fr); height: 100%; }
+    .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 60px; padding: 9px 16px; background: var(--panel); border-bottom: 1px solid #e5e9f1; }
+    .brand { font-weight: 750; white-space: nowrap; }
+    .title { max-width: 260px; overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+    .search { display: flex; flex: 1; align-items: center; gap: 5px; min-width: 250px; max-width: 520px; margin-left: auto; }
+    .search input { width: 100%; min-width: 100px; height: 34px; padding: 0 10px; border: 1px solid #cfd6e3; border-radius: 7px; background: #fbfcff; }
+    .search-count { min-width: 65px; color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; }
+    .btn, select { min-height: 34px; padding: 5px 10px; border: 1px solid #cfd6e3; border-radius: 7px; background: #fff; color: #344054; white-space: nowrap; }
+    .btn:hover:enabled, select:hover:enabled { background: #f1f5fc; }
+    .btn:focus-visible, select:focus-visible, input:focus-visible, .step:focus-visible, .flow:focus-visible { outline: 3px solid #8eb4ff; outline-offset: 2px; }
+    .notice { padding: 9px 16px; border-bottom: 1px solid #f4b4ad; background: #fff0ed; color: var(--danger); font-size: 13px; }
+    .main { display: grid; grid-template-columns: minmax(0, 1fr) 370px; min-height: 0; }
+    .workspace { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    .overview { flex: none; padding: 12px 18px; }
+    .description { max-height: 70px; overflow: auto; color: var(--muted); font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+    .controls select { max-width: 230px; }
+    .step-counter { margin-left: 5px; color: var(--muted); font-size: 12px; }
+    .viewport { position: relative; flex: 1; min-height: 0; overflow: auto; padding: 0 18px 18px; }
+    .board { position: relative; min-height: 520px; border: 1px solid #dce3ee; border-radius: 10px; background: #fff; }
+    .lane-heads { position: sticky; top: 0; z-index: 4; display: grid; height: 62px; border-bottom: 1px solid var(--line); background: #f8fafd; }
+    .lane-head { min-width: 0; overflow: hidden; padding: 9px 10px; border-right: 1px solid #e4e9f1; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .lane-head small { display: block; overflow: hidden; margin-top: 5px; color: var(--muted); font-size: 11px; font-weight: 400; text-overflow: ellipsis; }
+    .lane-line { position: absolute; top: 62px; bottom: 0; z-index: 0; border-left: 1px dashed #e0e6f0; }
+    .edges { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+    .flow-path { fill: none; stroke: #96a4bc; stroke-width: 1.7; opacity: .38; }
+    .flow[data-kind="return"] .flow-path { stroke-dasharray: 5 4; }
+    .flow[data-kind^="async_"] .flow-path { stroke-dasharray: 8 5; }
+    .flow[data-kind="branch"] .flow-path { stroke: #a66b16; }
+    .flow[data-kind="skip"] .flow-path { stroke-dasharray: 2 5; }
+    .flow.active .flow-path { stroke: var(--accent); stroke-width: 2.6; opacity: 1; }
+    .flow-hit { fill: none; stroke: transparent; stroke-width: 18; pointer-events: stroke; cursor: pointer; }
+    .flow-label { fill: #344054; font-size: 11px; font-weight: 600; opacity: 0; paint-order: stroke; pointer-events: none; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; text-anchor: middle; }
+    .flow.active .flow-label { opacity: 1; pointer-events: auto; cursor: pointer; }
+    .step { position: absolute; z-index: 2; display: block; width: 216px; padding: 9px 10px; border: 1px solid #cbd5e4; border-radius: 9px; background: #fff; box-shadow: 0 3px 10px #27395b12; color: inherit; text-align: left; }
+    .step:hover { border-color: #88a9e9; }
+    .step.selected { border-color: var(--accent); box-shadow: 0 0 0 3px #2765d822; }
+    .step.related { border-color: #8ba9dc; }
+    .step.match { outline: 2px solid #e5a640; outline-offset: 2px; }
+    .step-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 5px; color: var(--muted); font-size: 10px; }
+    .symbol { display: -webkit-box; overflow: hidden; font-size: 13px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .action { display: -webkit-box; overflow: hidden; margin-top: 5px; color: #475467; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 999px; background: #eef2f7; color: #475467; font-size: 10px; white-space: nowrap; }
+    .badge.start { background: #e9f0ff; color: #245bd3; }
+    .badge.end { background: #e8f8ef; color: #067647; }
+    .badge.confirmed { background: #e8f8ef; color: #067647; }
+    .badge.inferred { background: #fff3db; color: #925d00; }
+    .badge.unresolved { background: #fbe9e8; color: #b42318; }
+    .badge.phase { max-width: 108px; overflow: hidden; text-overflow: ellipsis; }
+    .side { min-width: 0; overflow: auto; padding: 18px; border-left: 1px solid #e1e6ee; background: #fff; }
+    .side h2 { margin: 5px 0 9px; font-size: 20px; overflow-wrap: anywhere; }
+    .side h3 { margin: 0 0 6px; color: #738096; font-size: 12px; }
+    .side .section { margin-top: 18px; }
+    .value { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .muted { color: var(--muted); }
+    .kicker { color: var(--muted); font-size: 12px; }
+    .evidence { margin: 0; padding-left: 18px; }
+    .evidence li { margin: 5px 0; overflow-wrap: anywhere; }
+    .evidence code, .value code { font-family: Consolas, "Cascadia Code", monospace; font-size: 12px; }
+    .flow-row, .endpoint { display: block; width: 100%; margin-top: 7px; padding: 9px; border: 1px solid #dce2ec; border-radius: 7px; background: #fff; color: inherit; text-align: left; overflow-wrap: anywhere; }
+    .flow-row:hover, .endpoint:hover { border-color: #91afe4; background: #f8faff; }
+    .flow-row small, .endpoint small { display: block; margin-top: 4px; color: var(--muted); line-height: 1.4; }
+    .arrow-text { margin: 10px 0; color: var(--accent); text-align: center; }
+    .welcome { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 24px; background: #f5f7fbea; }
+    .welcome-card { max-width: 470px; padding: 28px; border: 1px solid #dce3ee; border-radius: 12px; background: #fff; box-shadow: 0 15px 40px #20345a22; text-align: center; }
+    .welcome-card p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .drop { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center; background: #172033bd; color: #fff; font-size: 22px; font-weight: 700; }
+    .drop.show { display: flex; }
+    input[type="file"] { display: none; }
+    @media (max-width: 900px) {
+      .main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(190px, 34vh); }
+      .side { border-top: 1px solid #e1e6ee; border-left: 0; }
+      .search { order: 2; flex-basis: 100%; max-width: none; margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">运行时泳道图</div>
+      <div id="mapTitle" class="title">未加载数据</div>
+      <div class="search">
+        <input id="searchInput" type="search" placeholder="搜索步骤、符号、泳道或阶段" aria-label="搜索步骤" disabled>
+        <span id="searchCount" class="search-count"></span>
+        <button id="prevMatch" class="btn" type="button" disabled>上个匹配</button>
+        <button id="nextMatch" class="btn" type="button" disabled>下个匹配</button>
+      </div>
+      <button id="loadBtn" class="btn" type="button">加载 JSON</button>
+      <input id="fileInput" type="file" accept=".json,application/json">
+    </header>
+    <div id="notice" class="notice" role="alert" hidden></div>
+    <main class="main">
+      <section class="workspace" aria-label="运行时步骤泳道">
+        <div class="overview">
+          <div id="description" class="description"></div>
+          <div class="controls">
+            <select id="phaseSelect" aria-label="跳转阶段" disabled><option value="">跳转阶段</option></select>
+            <button id="prevStep" class="btn" type="button" disabled>上一步</button>
+            <button id="nextStep" class="btn" type="button" disabled>下一步</button>
+            <span id="stepCounter" class="step-counter"></span>
+          </div>
+        </div>
+        <div id="viewport" class="viewport">
+          <div id="board" class="board">
+            <svg id="edges" class="edges" aria-label="步骤间流转">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#96a4bc"></path></marker>
+                <marker id="arrowActive" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2765d8"></path></marker>
+              </defs>
+            </svg>
+            <div id="laneHeads" class="lane-heads"></div>
+          </div>
+          <div id="welcome" class="welcome">
+            <div class="welcome-card">
+              <h2>加载运行时泳道 JSON</h2>
+              <p>选择 JSON 文件或拖到页面中。点击步骤和连线可查看条件、证据与置信度。</p>
+              <button id="chooseBtn" class="btn" type="button">选择 JSON 文件</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <aside id="side" class="side" aria-live="polite">
+        <p class="muted">加载后选择步骤或连线，查看运行过程与源码依据。</p>
+      </aside>
+    </main>
+  </div>
+  <div id="dropOverlay" class="drop">松开以加载 JSON</div>
+  <script>
+    (() => {
+      'use strict';
+
+      const confidenceLabels = { confirmed: '已确认', inferred: '推断', unresolved: '未确认' };
+      const flowLabels = {
+        call: '调用', return: '返回', continue: '继续', branch: '分支',
+        async_submit: '异步提交', async_complete: '异步完成',
+        handoff: '交接', publish: '发布', skip: '跳过'
+      };
+      const stepKindLabels = {
+        call: '调用', work: '执行', decision: '决策', state_change: '状态变化',
+        async: '异步', return: '返回', other: '其他'
+      };
+      const symbolKindLabels = {
+        class: '类', struct: '结构体', interface: '接口', enum: '枚举',
+        namespace: '命名空间', function: '函数', method: '方法',
+        module: '模块', target: '目标', other: '其他'
+      };
+      const laneKindLabels = { object: '对象', system: '系统', module: '模块', thread: '线程', other: '其他' };
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const laneWidth = 250;
+      const cardWidth = 216;
+      const leftPad = 28;
+      const topPad = 88;
+      const cardGap = 12;
+      const rowGap = 60;
+      const ui = {
+        board: document.getElementById('board'),
+        edges: document.getElementById('edges'),
+        heads: document.getElementById('laneHeads'),
+        viewport: document.getElementById('viewport'),
+        side: document.getElementById('side'),
+        search: document.getElementById('searchInput'),
+        searchCount: document.getElementById('searchCount'),
+        prevMatch: document.getElementById('prevMatch'),
+        nextMatch: document.getElementById('nextMatch'),
+        prevStep: document.getElementById('prevStep'),
+        nextStep: document.getElementById('nextStep'),
+        stepCounter: document.getElementById('stepCounter'),
+        phaseSelect: document.getElementById('phaseSelect'),
+        notice: document.getElementById('notice')
+      };
+      const state = {
+        data: null, lanes: new Map(), steps: new Map(), ordered: [],
+        cards: new Map(), flowNodes: [], selectedStep: null,
+        selectedFlow: -1, matches: []
+      };
+
+      function esc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, character =>
+          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+      }
+
+      function requireValue(ok, message) {
+        if (!ok) throw new Error(message);
+      }
+
+      function isText(value) {
+        return typeof value === 'string' && value.length > 0;
+      }
+
+      function optionalText(object, key, label) {
+        requireValue(object[key] === undefined || typeof object[key] === 'string', label + ' 必须是文本');
+      }
+
+      function checkEvidence(item, label) {
+        if (item.evidence !== undefined) {
+          requireValue(Array.isArray(item.evidence) && item.evidence.every(isText), label + ' 的 evidence 无效');
+        }
+        if (item.confidence === 'confirmed') {
+          requireValue(item.evidence && item.evidence.length > 0, label + ' 缺少源码证据');
+        }
+      }
+
+      function validateForDisplay(data) {
+        requireValue(data && typeof data === 'object' && !Array.isArray(data), 'JSON 根必须是对象');
+        requireValue(data.schemaVersion === '1.0', '不支持的 schemaVersion');
+        requireValue(data.map && typeof data.map === 'object' && !Array.isArray(data.map), '缺少 map');
+        requireValue(isText(data.map.id) && isText(data.map.title), 'map.id 或 map.title 无效');
+        optionalText(data.map, 'description', 'map.description');
+        optionalText(data.map, 'scenario', 'map.scenario');
+        requireValue(Array.isArray(data.lanes) && data.lanes.length > 0, 'lanes 必须是非空数组');
+        requireValue(Array.isArray(data.steps) && data.steps.length > 0, 'steps 必须是非空数组');
+        requireValue(Array.isArray(data.flows), 'flows 必须是数组');
+
+        const lanes = new Map();
+        const steps = new Map();
+        for (const lane of data.lanes) {
+          requireValue(lane && isText(lane.id) && isText(lane.name), '泳道 ID 或名称无效');
+          requireValue(Object.prototype.hasOwnProperty.call(laneKindLabels, lane.kind), '泳道类型无效：' + lane.id);
+          requireValue(!lanes.has(lane.id), '重复泳道 ID：' + lane.id);
+          optionalText(lane, 'symbol', 'lane.symbol');
+          optionalText(lane, 'summary', 'lane.summary');
+          lanes.set(lane.id, lane);
+        }
+        for (const step of data.steps) {
+          requireValue(step && isText(step.id) && isText(step.laneId) &&
+            isText(step.symbol) && isText(step.action), '步骤必填字段无效');
+          requireValue(!steps.has(step.id), '重复步骤 ID：' + step.id);
+          requireValue(lanes.has(step.laneId), '步骤泳道不存在：' + step.id);
+          requireValue(Number.isInteger(step.order) && step.order >= 0, '步骤顺序无效：' + step.id);
+          requireValue(Object.prototype.hasOwnProperty.call(symbolKindLabels, step.symbolKind), '步骤符号类型无效：' + step.id);
+          requireValue(Object.prototype.hasOwnProperty.call(stepKindLabels, step.kind), '步骤类型无效：' + step.id);
+          requireValue(Object.prototype.hasOwnProperty.call(confidenceLabels, step.confidence), '步骤置信度无效：' + step.id);
+          optionalText(step, 'phase', 'step.phase');
+          if (step.definition !== undefined) requireValue(isText(step.definition), '步骤 definition 无效：' + step.id);
+          checkEvidence(step, '步骤 ' + step.id);
+          steps.set(step.id, step);
+        }
+        for (const flow of data.flows) {
+          requireValue(flow && isText(flow.from) && isText(flow.to), '流转端点无效');
+          requireValue(steps.has(flow.from) && steps.has(flow.to), '流转引用不存在的步骤');
+          requireValue(Object.prototype.hasOwnProperty.call(flowLabels, flow.flowKind), '流转类型无效');
+          requireValue(Object.prototype.hasOwnProperty.call(confidenceLabels, flow.confidence), '流转置信度无效');
+          requireValue(steps.get(flow.from).order < steps.get(flow.to).order,
+            '流转顺序必须从较早步骤指向较晚步骤：' + flow.from + ' → ' + flow.to);
+          optionalText(flow, 'label', 'flow.label');
+          optionalText(flow, 'condition', 'flow.condition');
+          checkEvidence(flow, '流转 ' + flow.from + ' → ' + flow.to);
+        }
+        for (const key of ['startStepId', 'endStepId']) {
+          if (data.map[key] !== undefined) {
+            requireValue(isText(data.map[key]) && steps.has(data.map[key]), key + ' 不存在');
+          }
+        }
+        return { lanes, steps };
+      }
+
+      function badge(confidence) {
+        return '<span class="badge ' + confidence + '">' + confidenceLabels[confidence] + '</span>';
+      }
+
+      function section(title, body) {
+        return '<div class="section"><h3>' + title + '</h3><div class="value">' + body + '</div></div>';
+      }
+
+      function evidenceList(items) {
+        if (!items || !items.length) return '<span class="muted">未附证据</span>';
+        return '<ul class="evidence">' + items.map(item => '<li><code>' + esc(item) + '</code></li>').join('') + '</ul>';
+      }
+
+      function renderStepDetails(step) {
+        const lane = state.lanes.get(step.laneId);
+        const flowRows = state.data.flows.map((flow, index) => ({ flow, index }))
+          .filter(item => item.flow.from === step.id || item.flow.to === step.id);
+        let html = '<div class="kicker">步骤 #' + step.order + '</div><h2>' + esc(step.symbol) + '</h2>' +
+          badge(step.confidence) + ' <span class="badge">' + stepKindLabels[step.kind] + '</span>';
+        html += section('这一步在做什么', esc(step.action));
+        html += section('所在泳道', esc(lane.name) + ' · ' + laneKindLabels[lane.kind] +
+          (lane.symbol ? '<br><code>' + esc(lane.symbol) + '</code>' : '') +
+          (lane.summary ? '<br>' + esc(lane.summary) : ''));
+        html += section('符号类型', symbolKindLabels[step.symbolKind]);
+        if (step.phase) html += section('阶段', esc(step.phase));
+        if (step.definition) html += section('定义位置', '<code>' + esc(step.definition) + '</code>');
+        html += section('源码依据', evidenceList(step.evidence));
+        if (flowRows.length) {
+          html += '<div class="section"><h3>前后流转</h3>';
+          for (const item of flowRows) {
+            const outgoing = item.flow.from === step.id;
+            const other = state.steps.get(outgoing ? item.flow.to : item.flow.from);
+            html += '<button class="flow-row" type="button" data-flow-index="' + item.index + '">' +
+              (outgoing ? '→ 输出' : '← 输入') + ' · ' + flowLabels[item.flow.flowKind] +
+              ' · ' + esc(other.symbol) + ' ' + badge(item.flow.confidence) +
+              (item.flow.condition ? '<small>条件：' + esc(item.flow.condition) + '</small>' :
+                item.flow.label ? '<small>' + esc(item.flow.label) + '</small>' : '') + '</button>';
+          }
+          html += '</div>';
+        }
+        ui.side.innerHTML = html;
+      }
+
+      function renderFlowDetails(index) {
+        const flow = state.data.flows[index];
+        const from = state.steps.get(flow.from);
+        const to = state.steps.get(flow.to);
+        const fromLane = state.lanes.get(from.laneId);
+        const toLane = state.lanes.get(to.laneId);
+        let html = '<div class="kicker">流转</div><h2>' + flowLabels[flow.flowKind] + '</h2>' + badge(flow.confidence);
+        html += '<div class="section"><h3>方向</h3>' +
+          '<button class="endpoint" type="button" data-endpoint="from">' + esc(from.symbol) +
+          '<small>起点 · ' + esc(fromLane.name) + ' · 步骤 #' + from.order + '</small></button>' +
+          '<div class="arrow-text">↓</div>' +
+          '<button class="endpoint" type="button" data-endpoint="to">' + esc(to.symbol) +
+          '<small>终点 · ' + esc(toLane.name) + ' · 步骤 #' + to.order + '</small></button></div>';
+        if (flow.label) html += section('说明', esc(flow.label));
+        if (flow.condition) html += section('条件', esc(flow.condition));
+        html += section('源码依据', evidenceList(flow.evidence));
+        ui.side.innerHTML = html;
+      }
+
+      function renderHeads() {
+        ui.heads.replaceChildren();
+        ui.heads.style.gridTemplateColumns = 'repeat(' + state.data.lanes.length + ', ' + laneWidth + 'px)';
+        ui.heads.style.paddingLeft = leftPad + 'px';
+        for (const lane of state.data.lanes) {
+          const head = document.createElement('div');
+          head.className = 'lane-head';
+          head.textContent = lane.name;
+          if (lane.symbol) {
+            const detail = document.createElement('small');
+            detail.textContent = lane.symbol;
+            head.appendChild(detail);
+          }
+          ui.heads.appendChild(head);
+        }
+      }
+
+      function renderBoard() {
+        ui.board.querySelectorAll('.step, .lane-line').forEach(element => element.remove());
+        ui.edges.querySelectorAll('.flow').forEach(element => element.remove());
+        state.cards.clear();
+        state.flowNodes = [];
+        ui.board.style.width = (leftPad * 2 + laneWidth * state.data.lanes.length) + 'px';
+        renderHeads();
+
+        for (let index = 1; index < state.data.lanes.length; index++) {
+          const line = document.createElement('div');
+          line.className = 'lane-line';
+          line.style.left = (leftPad + index * laneWidth) + 'px';
+          ui.board.appendChild(line);
+        }
+
+        const laneIndexes = new Map(state.data.lanes.map((lane, index) => [lane.id, index]));
+        const orderCounts = new Map();
+        for (const step of state.ordered) orderCounts.set(step.order, (orderCounts.get(step.order) || 0) + 1);
+        for (const step of state.ordered) {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'step';
+          card.dataset.stepId = step.id;
+          card.setAttribute('aria-pressed', 'false');
+          card.setAttribute('aria-label', '步骤 #' + step.order + '，' + step.symbol + '。' + step.action);
+          card.title = step.symbol + '\n' + step.action;
+          card.style.left = (leftPad + laneIndexes.get(step.laneId) * laneWidth +
+            (laneWidth - cardWidth) / 2) + 'px';
+          card.style.visibility = 'hidden';
+          card.innerHTML = '<span class="step-meta"><span>#' + step.order + '</span>' +
+            (step.id === state.data.map.startStepId ? '<span class="badge start">开始</span>' : '') +
+            (step.id === state.data.map.endStepId ? '<span class="badge end">结束</span>' : '') +
+            (orderCounts.get(step.order) > 1 ? '<span class="badge">并行</span>' : '') +
+            (step.phase ? '<span class="badge phase" title="' + esc(step.phase) + '">' + esc(step.phase) + '</span>' : '') +
+            badge(step.confidence) + '</span>' +
+            '<strong class="symbol">' + esc(step.symbol) + '</strong>' +
+            '<span class="action">' + esc(step.action) + '</span>';
+          card.addEventListener('click', () => selectStep(step.id, false));
+          ui.board.appendChild(card);
+          state.cards.set(step.id, card);
+        }
+
+        const groups = new Map();
+        for (const step of state.ordered) {
+          if (!groups.has(step.order)) groups.set(step.order, []);
+          groups.get(step.order).push(step);
+        }
+        let top = topPad;
+        for (const group of groups.values()) {
+          const byLane = new Map();
+          for (const step of group) {
+            if (!byLane.has(step.laneId)) byLane.set(step.laneId, []);
+            byLane.get(step.laneId).push(step);
+          }
+          let rowHeight = 0;
+          for (const laneSteps of byLane.values()) {
+            let stackHeight = 0;
+            for (const step of laneSteps) {
+              const card = state.cards.get(step.id);
+              card.style.top = (top + stackHeight) + 'px';
+              stackHeight += card.offsetHeight + cardGap;
+            }
+            rowHeight = Math.max(rowHeight, stackHeight - cardGap);
+          }
+          top += rowHeight + rowGap;
+        }
+        ui.board.style.height = Math.max(520, top + 20) + 'px';
+        for (const card of state.cards.values()) card.style.visibility = 'visible';
+        drawFlows();
+      }
+
+      function svgElement(tag, className) {
+        const element = document.createElementNS(svgNS, tag);
+        element.setAttribute('class', className);
+        return element;
+      }
+
+      function drawFlows() {
+        const pairCounts = new Map();
+        const pairSeen = new Map();
+        for (const flow of state.data.flows) {
+          const key = JSON.stringify([flow.from, flow.to]);
+          pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+        }
+        state.data.flows.forEach((flow, index) => {
+          const from = state.cards.get(flow.from);
+          const to = state.cards.get(flow.to);
+          const ax = from.offsetLeft + from.offsetWidth / 2;
+          const ay = from.offsetTop + from.offsetHeight;
+          const bx = to.offsetLeft + to.offsetWidth / 2;
+          const by = to.offsetTop;
+          const key = JSON.stringify([flow.from, flow.to]);
+          const seen = pairSeen.get(key) || 0;
+          pairSeen.set(key, seen + 1);
+          const offset = (seen - (pairCounts.get(key) - 1) / 2) * 18;
+          const middle = (ay + by) / 2;
+          const pathData = 'M ' + ax + ' ' + ay + ' C ' + (ax + offset) + ' ' + middle +
+            ', ' + (bx + offset) + ' ' + middle + ', ' + bx + ' ' + by;
+          const group = svgElement('g', 'flow');
+          group.dataset.kind = flow.flowKind;
+          group.setAttribute('tabindex', '0');
+          group.setAttribute('role', 'button');
+          group.setAttribute('aria-pressed', 'false');
+          group.setAttribute('aria-label', flowLabels[flow.flowKind] + '，从 ' +
+            state.steps.get(flow.from).symbol + ' 到 ' + state.steps.get(flow.to).symbol +
+            (flow.condition ? '，条件：' + flow.condition : ''));
+          const path = svgElement('path', 'flow-path');
+          path.setAttribute('d', pathData);
+          path.setAttribute('marker-end', 'url(#arrow)');
+          const hit = svgElement('path', 'flow-hit');
+          hit.setAttribute('d', pathData);
+          const label = svgElement('text', 'flow-label');
+          label.setAttribute('x', (ax + bx) / 2 + offset);
+          label.setAttribute('y', middle - 7);
+          const fullLabel = flowLabels[flow.flowKind] +
+            (flow.condition ? ' · ' + flow.condition : flow.label ? ' · ' + flow.label : '');
+          label.textContent = fullLabel.length > 28 ? fullLabel.slice(0, 27) + '…' : fullLabel;
+          const title = svgElement('title', '');
+          title.textContent = fullLabel;
+          group.append(path, hit, label, title);
+          group.addEventListener('click', () => selectFlow(index, false));
+          group.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              selectFlow(index, false);
+            }
+          });
+          ui.edges.appendChild(group);
+          state.flowNodes.push(group);
+        });
+        updateFocus();
+      }
+
+      function updateFocus() {
+        const related = new Set();
+        state.flowNodes.forEach((node, index) => {
+          const flow = state.data.flows[index];
+          const active = state.selectedFlow >= 0 ? index === state.selectedFlow :
+            flow.from === state.selectedStep || flow.to === state.selectedStep;
+          node.classList.toggle('active', active);
+          node.setAttribute('aria-pressed', String(state.selectedFlow === index));
+          node.querySelector('.flow-path').setAttribute('marker-end',
+            active ? 'url(#arrowActive)' : 'url(#arrow)');
+          if (active) {
+            related.add(flow.from);
+            related.add(flow.to);
+          }
+        });
+        for (const [id, card] of state.cards) {
+          const selected = state.selectedFlow < 0 && id === state.selectedStep;
+          card.classList.toggle('selected', selected);
+          card.classList.toggle('related', related.has(id) && !selected);
+          card.setAttribute('aria-pressed', String(selected));
+        }
+      }
+
+      function scrollToStep(id) {
+        const card = state.cards.get(id);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      }
+
+      function updateNavigation() {
+        const index = state.ordered.findIndex(step => step.id === state.selectedStep);
+        ui.prevStep.disabled = index <= 0;
+        ui.nextStep.disabled = index < 0 || index >= state.ordered.length - 1;
+        ui.stepCounter.textContent = index >= 0 ?
+          (state.selectedFlow >= 0 ? '流转至 ' : '') + (index + 1) + ' / ' + state.ordered.length + ' 步' : '';
+        ui.phaseSelect.value = index >= 0 ? (state.ordered[index].phase || '') : '';
+        const matchIndex = state.matches.findIndex(step => step.id === state.selectedStep);
+        ui.searchCount.textContent = ui.search.value.trim() ?
+          (matchIndex >= 0 ? (matchIndex + 1) + ' / ' + state.matches.length + ' 匹配' :
+            state.matches.length + ' 个匹配') : '';
+      }
+
+      function selectStep(id, scroll) {
+        const step = state.steps.get(id);
+        if (!step) return;
+        state.selectedStep = id;
+        state.selectedFlow = -1;
+        renderStepDetails(step);
+        updateFocus();
+        updateNavigation();
+        if (scroll) scrollToStep(id);
+      }
+
+      function selectFlow(index, scroll) {
+        const flow = state.data.flows[index];
+        if (!flow) return;
+        state.selectedStep = flow.to;
+        state.selectedFlow = index;
+        renderFlowDetails(index);
+        updateFocus();
+        updateNavigation();
+        if (scroll) scrollToStep(flow.to);
+      }
+
+      function updateSearch() {
+        const query = ui.search.value.trim().toLocaleLowerCase();
+        state.matches = query ? state.ordered.filter(step => {
+          const lane = state.lanes.get(step.laneId);
+          return [step.symbol, step.action, step.phase || '', lane.name, lane.symbol || '']
+            .join(' ').toLocaleLowerCase().includes(query);
+        }) : [];
+        for (const [id, card] of state.cards) {
+          card.classList.toggle('match', state.matches.some(step => step.id === id));
+        }
+        ui.prevMatch.disabled = ui.nextMatch.disabled = state.matches.length === 0;
+        updateNavigation();
+      }
+
+      function jumpMatch(direction) {
+        if (!state.matches.length) return;
+        let index = state.matches.findIndex(step => step.id === state.selectedStep);
+        if (index < 0) index = direction > 0 ? -1 : 0;
+        index = (index + direction + state.matches.length) % state.matches.length;
+        selectStep(state.matches[index].id, true);
+      }
+
+      function navigateStep(direction) {
+        const index = state.ordered.findIndex(step => step.id === state.selectedStep);
+        const next = state.ordered[index + direction];
+        if (next) selectStep(next.id, true);
+      }
+
+      function fillPhases() {
+        ui.phaseSelect.replaceChildren(new Option('跳转阶段', ''));
+        const seen = new Set();
+        for (const step of state.ordered) {
+          if (step.phase && !seen.has(step.phase)) {
+            seen.add(step.phase);
+            ui.phaseSelect.add(new Option(step.phase, step.phase));
+          }
+        }
+        ui.phaseSelect.disabled = seen.size === 0;
+      }
+
+      function showNotice(message) {
+        ui.notice.textContent = message;
+        ui.notice.hidden = false;
+      }
+
+      function clearNotice() {
+        ui.notice.textContent = '';
+        ui.notice.hidden = true;
+      }
+
+      function loadData(data) {
+        const refs = validateForDisplay(data);
+        state.data = data;
+        state.lanes = refs.lanes;
+        state.steps = refs.steps;
+        state.ordered = data.steps.map((step, index) => ({ step, index }))
+          .sort((a, b) => a.step.order - b.step.order || a.index - b.index)
+          .map(item => item.step);
+        state.selectedStep = null;
+        state.selectedFlow = -1;
+        state.matches = [];
+        ui.search.value = '';
+        ui.search.disabled = false;
+        ui.prevMatch.disabled = true;
+        ui.nextMatch.disabled = true;
+        document.getElementById('mapTitle').textContent = data.map.title;
+        document.getElementById('description').textContent =
+          (data.map.scenario ? '场景：' + data.map.scenario + '\n' : '') + (data.map.description || '');
+        fillPhases();
+        renderBoard();
+        document.getElementById('welcome').hidden = true;
+        selectStep(data.map.startStepId || state.ordered[0].id, false);
+        ui.viewport.scrollTop = 0;
+        ui.viewport.scrollLeft = 0;
+        clearNotice();
+      }
+
+      ui.side.addEventListener('click', event => {
+        const flowButton = event.target.closest('[data-flow-index]');
+        if (flowButton) {
+          selectFlow(Number(flowButton.dataset.flowIndex), true);
+          return;
+        }
+        const endpoint = event.target.closest('[data-endpoint]');
+        if (endpoint && state.selectedFlow >= 0) {
+          selectStep(state.data.flows[state.selectedFlow][endpoint.dataset.endpoint], true);
+        }
+      });
+      ui.search.addEventListener('input', updateSearch);
+      ui.search.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          jumpMatch(event.shiftKey ? -1 : 1);
+        } else if (event.key === 'Escape') {
+          ui.search.value = '';
+          updateSearch();
+        }
+      });
+      ui.prevMatch.addEventListener('click', () => jumpMatch(-1));
+      ui.nextMatch.addEventListener('click', () => jumpMatch(1));
+      ui.prevStep.addEventListener('click', () => navigateStep(-1));
+      ui.nextStep.addEventListener('click', () => navigateStep(1));
+      ui.phaseSelect.addEventListener('change', () => {
+        const first = state.ordered.find(step => step.phase === ui.phaseSelect.value);
+        if (first) selectStep(first.id, true);
+      });
+
+      function setupLoader(defaultName) {
+        const fileInput = document.getElementById('fileInput');
+        const drop = document.getElementById('dropOverlay');
+        let manualLoadStarted = false;
+        let dragDepth = 0;
+
+        function parse(text, name) {
+          try {
+            loadData(JSON.parse(text));
+          } catch (error) {
+            showNotice('加载 ' + name + ' 失败：' + (error && error.message ? error.message : String(error)));
+          }
+        }
+
+        function readFile(file) {
+          if (!file) return;
+          manualLoadStarted = true;
+          const reader = new FileReader();
+          reader.onload = () => parse(String(reader.result), file.name);
+          reader.onerror = () => showNotice('读取 ' + file.name + ' 失败');
+          reader.readAsText(file, 'utf-8');
+        }
+
+        document.getElementById('loadBtn').addEventListener('click', () => fileInput.click());
+        document.getElementById('chooseBtn').addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+          const file = fileInput.files && fileInput.files[0];
+          fileInput.value = '';
+          readFile(file);
+        });
+        window.addEventListener('dragenter', event => {
+          if (!event.dataTransfer || !Array.from(event.dataTransfer.types).includes('Files')) return;
+          event.preventDefault();
+          dragDepth++;
+          drop.classList.add('show');
+        });
+        window.addEventListener('dragover', event => {
+          if (event.dataTransfer && Array.from(event.dataTransfer.types).includes('Files')) event.preventDefault();
+        });
+        window.addEventListener('dragleave', event => {
+          event.preventDefault();
+          dragDepth = Math.max(0, dragDepth - 1);
+          if (!dragDepth) drop.classList.remove('show');
+        });
+        window.addEventListener('drop', event => {
+          event.preventDefault();
+          dragDepth = 0;
+          drop.classList.remove('show');
+          readFile(event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]);
+        });
+
+        if (location.protocol !== 'file:') {
+          const name = new URLSearchParams(location.search).get('data') || defaultName;
+          fetch(name).then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.text();
+          }).then(text => {
+            if (!manualLoadStarted) parse(text, name);
+          }).catch(error => {
+            if (!manualLoadStarted) showNotice('未自动加载 ' + name + '：' + error.message + '。可手动选择 JSON 文件。');
+          });
+        }
+      }
+
+      setupLoader('runtime-swimlane.json');
+    })();
+  </script>
+</body>
+</html>

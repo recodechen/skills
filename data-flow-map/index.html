@@ -1,0 +1,423 @@
+<!-- Author: chenhh -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Data Flow Map</title>
+<style>
+:root{--bg:#f5f7fb;--text:#172033;--muted:#667085;--line:#d4dce9;--blue:#245fce;--purple:#6941c6;--danger:#b42318}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+button,input{font:inherit}
+.app{height:100%;display:grid;grid-template-rows:62px minmax(0,1fr)}
+.topbar{display:flex;align-items:center;gap:12px;padding:0 18px;background:#fff;border-bottom:1px solid #e4e8f0}
+.brand{font-weight:750;white-space:nowrap}
+.title{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#475467;font-size:13px}
+.meta{color:var(--muted);font-size:12px;white-space:nowrap}
+.search{flex:1;max-width:480px;margin-left:auto}
+.search input{width:100%;height:36px;padding:0 11px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe;outline:none}
+.search input:focus{border-color:var(--blue)}
+.toolbar{display:flex;gap:7px}
+.btn{height:34px;padding:0 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#344054;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#f6f8fc}
+.btn:disabled{opacity:.55;cursor:default}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;min-height:0}
+.canvas-wrap{min-width:0;overflow:auto;padding:18px}
+.descbar{max-width:1000px;margin-bottom:12px;color:var(--muted);font-size:13px;line-height:1.6;white-space:pre-wrap}
+.board{position:relative;min-width:1100px;min-height:680px;overflow:hidden;border:1px solid #e1e7f0;border-radius:14px;background:linear-gradient(#eef1f6 1px,transparent 1px),linear-gradient(90deg,#eef1f6 1px,transparent 1px);background-size:24px 24px}
+.edges{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.edge-line{fill:none;stroke:#8a98b2;stroke-width:1.8}
+.edge-group.onpath .edge-line{stroke:#4d77c7;stroke-width:2.3}
+.edge-group.copy .edge-line{stroke:#217a58}
+.edge-group.reference .edge-line{stroke:#138a94;stroke-dasharray:5 4}
+.edge-group.upload .edge-line{stroke:#ad650a}
+.edge-group.selected .edge-line{stroke-width:3.5}
+.edge-hit{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}
+.edge-label{font-size:11px;font-weight:650;fill:#4d5d78;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round}
+.edge-group.structural .edge-label{opacity:0}
+.edge-group.structural:hover .edge-label,.edge-group.structural.selected .edge-label{opacity:1}
+.edge-group.search-dim{opacity:.18}
+.card{position:absolute;width:226px;padding:11px 12px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 5px 14px rgba(40,54,94,.07);cursor:grab;user-select:none}
+.card:hover{box-shadow:0 8px 20px rgba(40,54,94,.12)}
+.card:focus-visible{outline:3px solid #f3c969}
+.card.data{background:#f9fbff;border-color:#b9c9eb}
+.card.transform{background:#fbf9ff;border-color:#c9bce8}
+.card.onpath{border-left:4px solid var(--blue)}
+.card.selected{outline:3px solid rgba(47,111,237,.38)}
+.card.match{outline:3px solid #eab94d}
+.card.search-dim{opacity:.35}
+.badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.badge{padding:2px 6px;border-radius:999px;background:#eef2f7;color:#526176;font-size:10px}
+.badge.data{background:#eaf1ff;color:#1f5bd8}
+.badge.transform{background:#f1ecff;color:#6941c6}
+.badge.start{background:#dceaff;color:#1f5bd8}
+.badge.end{background:#dcf8e8;color:#027a48}
+.badge.confirmed{background:#e8f7ee;color:#087443}
+.badge.inferred{background:#fff3d8;color:#916000}
+.badge.unresolved{background:#fde7e5;color:#b42318}
+.symbol{font-size:14px;font-weight:720;line-height:1.35;overflow-wrap:anywhere}
+.summary{margin-top:6px;color:#536079;font-size:12px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.detail{margin-top:6px;padding-top:6px;border-top:1px solid #e6eaf2;color:#344054;font-size:12px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.legend{position:absolute;left:14px;bottom:14px;padding:8px 10px;background:rgba(255,255,255,.95);border:1px solid #dfe5ee;border-radius:8px;color:#5c6980;font-size:11px;line-height:1.6}
+.side{overflow:auto;min-width:0;padding:20px;background:#fff;border-left:1px solid #e1e6ee}
+.side h2{margin:0;font-size:19px;line-height:1.35;overflow-wrap:anywhere}
+.side .lead{margin-top:8px;color:#475467;font-size:13px;line-height:1.6;white-space:pre-wrap}
+.section{margin-top:20px}
+.section h3{margin:0 0 8px;color:#768398;font-size:12px;letter-spacing:.03em}
+.value{font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.source-list{margin:5px 0 0;padding-left:19px;color:#344054;font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.relation{display:block;width:100%;margin:7px 0;padding:9px 10px;text-align:left;border:1px solid #e2e7f0;border-radius:8px;background:#fbfcff;color:var(--text);cursor:pointer}
+.relation:hover{border-color:#9cb7ee;background:#f5f8ff}
+.relation .rel-head{font-size:13px;font-weight:650;overflow-wrap:anywhere}
+.relation .rel-desc{margin-top:4px;color:#667085;font-size:12px;line-height:1.5}
+.relation .rel-head,.relation .rel-desc{display:block}
+.compare{margin-top:8px;padding:9px 10px;border-left:3px solid #b9c9eb;background:#f7f9fd;border-radius:5px}
+.compare .name{font-size:12px;font-weight:700;overflow-wrap:anywhere}
+.compare .value{font-size:12px;color:#526176}
+.empty{margin:70px auto;color:#98a2b3;text-align:center;font-size:14px;line-height:1.7}
+.welcome{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:30px;background:rgba(245,247,251,.94)}
+.welcome-card{width:min(520px,90%);padding:28px;text-align:center;background:#fff;border:1px solid #e1e6ee;border-radius:14px;box-shadow:0 18px 50px rgba(30,45,90,.12)}
+.welcome-card p{color:#667085;font-size:14px;line-height:1.7}
+.notice{position:fixed;top:70px;right:20px;z-index:110;max-width:min(520px,calc(100vw - 40px));padding:11px 14px;border:1px solid #f3b6af;border-radius:9px;background:#fff1f0;color:var(--danger);box-shadow:0 9px 24px rgba(30,45,90,.14);font-size:13px;line-height:1.5;white-space:pre-wrap}
+.notice[hidden]{display:none}
+.drop{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(20,28,45,.72);color:#fff;font-size:24px;font-weight:700;pointer-events:none}
+.drop.show{display:flex}
+input[type=file]{display:none}
+@media(max-width:980px){.main{grid-template-columns:minmax(0,1fr) 310px}.title{max-width:170px}.meta{display:none}}
+@media(max-width:700px){.app{grid-template-rows:auto minmax(0,1fr)}.topbar{flex-wrap:wrap;padding:9px}.search{order:2;flex-basis:100%;max-width:none;margin:0}.main{grid-template-columns:1fr;grid-template-rows:minmax(300px,1fr) minmax(230px,42%)}.side{border-left:0;border-top:1px solid #e1e6ee}.brand{font-size:13px}.title{max-width:110px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">Data Flow Map</div><div id="mapTitle" class="title">未加载数据</div>
+    <div id="mapMeta" class="meta"></div>
+    <div class="search"><input id="searchInput" type="search" placeholder="搜索符号、说明或数据流…" disabled></div>
+    <div class="toolbar"><button id="loadBtn" class="btn" type="button">加载 JSON</button><button id="resetBtn" class="btn" type="button" disabled>恢复布局</button></div>
+    <input id="fileInput" type="file" accept=".json,application/json">
+  </header>
+  <main class="main">
+    <section id="canvasWrap" class="canvas-wrap" aria-label="数据流图">
+      <div id="description" class="descbar"></div>
+      <div id="board" class="board">
+        <svg id="edges" class="edges" aria-label="数据流关系">
+          <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#697a99"></path></marker></defs>
+        </svg>
+        <div class="legend">箭头表示数据方向；虚线表示引用。点击节点或连线查看变化与源码依据。</div>
+        <div id="welcome" class="welcome"><div class="welcome-card"><h2>加载 Data Flow Map JSON</h2><p>点击“加载 JSON”，或把 JSON 文件拖到页面中。</p><button id="welcomeLoadBtn" class="btn" type="button">选择 JSON 文件</button></div></div>
+      </div>
+    </section>
+    <aside id="side" class="side" aria-live="polite"><div class="empty">加载 JSON 后，可查看每一步的数据表示和变化。</div></aside>
+  </main>
+</div>
+<div id="notice" class="notice" role="alert" hidden></div>
+<div id="dropOverlay" class="drop">松开以加载 JSON</div>
+<script>
+(function(){
+'use strict';
+const flowLabels={input:'输入',output:'输出',transform:'转换',resolve:'解析',filter:'过滤',copy:'复制',reference:'引用',publish:'发布',upload:'上传',aggregate:'聚合',split:'拆分',cache:'缓存',handoff:'交接'};
+const confidenceLabels={confirmed:'已核实',inferred:'推断',unresolved:'待核实'};
+const dataKinds=new Set(['class','struct','type','buffer','resource','object','other']);
+const transformKinds=new Set(['class','struct','function','method','module','other']);
+const confidenceKinds=new Set(Object.keys(confidenceLabels));
+const flowKinds=new Set(Object.keys(flowLabels));
+const board=document.getElementById('board');
+const edges=document.getElementById('edges');
+const side=document.getElementById('side');
+const search=document.getElementById('searchInput');
+const canvasWrap=document.getElementById('canvasWrap');
+const notice=document.getElementById('notice');
+let data=null;
+let nodes=new Map();
+let pos=Object.create(null);
+let columns=[];
+let corridor=new Set();
+let corridorEdges=new Set();
+let selected=null;
+let signature='';
+function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function obj(v){return v!==null&&typeof v==='object'&&!Array.isArray(v)}
+function str(v,path,required){if(typeof v!=='string'||(required&&v.length===0))throw Error(path+' 必须是'+(required?'非空':'')+'字符串')}
+function props(v,allowed,path){for(const k of Object.keys(v))if(!allowed.includes(k))throw Error(path+' 包含未知字段 '+k)}
+function evidence(v,path,required){if(v===undefined){if(required)throw Error(path+' 缺少源码证据');return}if(!Array.isArray(v)||(required&&v.length===0))throw Error(path+' 必须是非空证据数组');v.forEach(function(s,i){str(s,path+'['+i+']',true)})}
+function walk(seed,adj){const seen=new Set([seed]),queue=[seed];for(let i=0;i<queue.length;i++)for(const next of adj.get(queue[i])||[])if(!seen.has(next)){seen.add(next);queue.push(next)}return seen}
+function validate(d){
+  if(!obj(d))throw Error('JSON 顶层必须是对象');
+  props(d,['schemaVersion','map','nodes','flows'],'顶层');
+  if(d.schemaVersion!=='1.0')throw Error('不支持的 schemaVersion');
+  if(!obj(d.map))throw Error('缺少 map 对象');
+  props(d.map,['id','title','description','startNodeId','endNodeId'],'map');
+  str(d.map.id,'map.id',true);str(d.map.title,'map.title',true);
+  for(const key of ['description','startNodeId','endNodeId'])if(d.map[key]!==undefined)str(d.map[key],'map.'+key,key!=='description');
+  if(!Array.isArray(d.nodes)||d.nodes.length===0)throw Error('nodes 必须是非空数组');
+  if(!Array.isArray(d.flows))throw Error('flows 必须是数组');
+  const ids=new Set();
+  d.nodes.forEach(function(n,i){
+    const path='nodes['+i+']';
+    if(!obj(n))throw Error(path+' 必须是对象');
+    if(n.kind!=='data'&&n.kind!=='transform')throw Error(path+'.kind 无效');
+    const dataNode=n.kind==='data';
+    props(n,dataNode?['id','kind','symbol','symbolKind','summary','representation','lifetime','confidence','definition','evidence']:['id','kind','symbol','symbolKind','summary','action','confidence','definition','evidence'],path);
+    for(const key of ['id','symbol','summary',dataNode?'representation':'action'])str(n[key],path+'.'+key,true);
+    if(ids.has(n.id))throw Error('重复节点 ID：'+n.id);
+    ids.add(n.id);
+    if(!(dataNode?dataKinds:transformKinds).has(n.symbolKind))throw Error(path+'.symbolKind 无效');
+    if(!confidenceKinds.has(n.confidence))throw Error(path+'.confidence 无效');
+    if(n.definition!==undefined)str(n.definition,path+'.definition',true);
+    if(dataNode&&n.lifetime!==undefined)str(n.lifetime,path+'.lifetime',false);
+    evidence(n.evidence,path+'.evidence',n.confidence==='confirmed');
+  });
+  const adj=new Map(d.nodes.map(function(n){return [n.id,[]]}));
+  d.flows.forEach(function(f,i){
+    const path='flows['+i+']';
+    if(!obj(f))throw Error(path+' 必须是对象');
+    props(f,['from','to','flowKind','description','confidence','evidence'],path);
+    str(f.from,path+'.from',true);str(f.to,path+'.to',true);
+    if(!ids.has(f.from)||!ids.has(f.to))throw Error(path+' 的端点不存在');
+    if(!flowKinds.has(f.flowKind))throw Error(path+'.flowKind 无效');
+    if(!confidenceKinds.has(f.confidence))throw Error(path+'.confidence 无效');
+    if(f.description!==undefined)str(f.description,path+'.description',false);
+    evidence(f.evidence,path+'.evidence',f.confidence==='confirmed');
+    adj.get(f.from).push(f.to);
+  });
+  for(const key of ['startNodeId','endNodeId'])if(d.map[key]!==undefined&&!ids.has(d.map[key]))throw Error('map.'+key+' 不存在');
+  if(d.map.startNodeId&&d.map.endNodeId&&!walk(d.map.startNodeId,adj).has(d.map.endNodeId))throw Error('起点到终点没有有向数据流路径');
+}
+function graph(){
+  const ids=data.nodes.map(function(n){return n.id});
+  const out=new Map(ids.map(function(id){return [id,[]]}));
+  const reverse=new Map(ids.map(function(id){return [id,[]]}));
+  data.flows.forEach(function(f){out.get(f.from).push(f.to);reverse.get(f.to).push(f.from)});
+  const start=data.map.startNodeId,end=data.map.endNodeId;
+  const forward=start?walk(start,out):null,backward=end?walk(end,reverse):null;
+  corridor=new Set(ids.filter(function(id){return (!forward||forward.has(id))&&(!backward||backward.has(id))}));
+  corridorEdges=new Set();
+  data.flows.forEach(function(f,i){if(corridor.has(f.from)&&corridor.has(f.to))corridorEdges.add(i)});
+  let tick=0;
+  const index=new Map(),low=new Map(),stack=[],active=new Set(),parts=[];
+  function strong(v){
+    index.set(v,tick);low.set(v,tick);tick++;stack.push(v);active.add(v);
+    for(const w of out.get(v)){
+      if(!index.has(w)){strong(w);low.set(v,Math.min(low.get(v),low.get(w)))}
+      else if(active.has(w))low.set(v,Math.min(low.get(v),index.get(w)));
+    }
+    if(low.get(v)===index.get(v)){
+      const part=[];let w;
+      do{w=stack.pop();active.delete(w);part.push(w)}while(w!==v);
+      parts.push(part);
+    }
+  }
+  ids.forEach(function(id){if(!index.has(id))strong(id)});
+  const owner=new Map();
+  parts.forEach(function(part,i){part.forEach(function(id){owner.set(id,i)})});
+  const links=parts.map(function(){return new Set()}),indegree=parts.map(function(){return 0}),rank=parts.map(function(){return 0});
+  data.flows.forEach(function(f){const a=owner.get(f.from),b=owner.get(f.to);if(a!==b&&!links[a].has(b)){links[a].add(b);indegree[b]++}});
+  const queue=[];
+  indegree.forEach(function(n,i){if(n===0)queue.push(i)});
+  for(let i=0;i<queue.length;i++)for(const next of links[queue[i]]){rank[next]=Math.max(rank[next],rank[queue[i]]+1);if(--indegree[next]===0)queue.push(next)}
+  const groups=new Map();
+  data.nodes.forEach(function(n){const r=rank[owner.get(n.id)];if(!groups.has(r))groups.set(r,[]);groups.get(r).push(n.id)});
+  columns=[...groups.entries()].sort(function(a,b){return a[0]-b[0]});
+  columns.forEach(function(entry){entry[1].sort(function(a,b){return Number(corridor.has(b))-Number(corridor.has(a))})});
+}
+function storageKey(){return 'dataflow:layout:'+data.map.id}
+function savedPositions(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(storageKey())||'null');
+    if(!obj(saved)||saved.signature!==signature||!obj(saved.positions))return {};
+    const valid={};
+    for(const n of data.nodes){const p=saved.positions[n.id];if(obj(p)&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=8&&p.y>=8)valid[n.id]={x:p.x,y:p.y}}
+    return valid;
+  }catch{return {}}
+}
+function save(){try{localStorage.setItem(storageKey(),JSON.stringify({signature:signature,positions:pos}))}catch{}}
+function fitBoard(){
+  let right=0,bottom=0;
+  board.querySelectorAll('.card').forEach(function(el){right=Math.max(right,el.offsetLeft+el.offsetWidth);bottom=Math.max(bottom,el.offsetTop+el.offsetHeight)});
+  board.style.width=Math.max(1100,canvasWrap.clientWidth-36,right+170)+'px';
+  board.style.height=Math.max(680,bottom+80)+'px';
+}
+function badge(text,kind){return '<span class="badge '+kind+'">'+esc(text)+'</span>'}
+function render(useSaved){
+  board.querySelectorAll('.card').forEach(function(el){el.remove()});
+  pos=Object.create(null);
+  for(const n of data.nodes){
+    const el=document.createElement('div');
+    el.className='card '+n.kind+(corridor.has(n.id)?' onpath':'');
+    el.dataset.id=n.id;el.tabIndex=0;el.setAttribute('role','button');
+    el.setAttribute('aria-label','查看节点 '+n.symbol);
+    let badges=badge(n.kind==='data'?'数据表示':'处理代码',n.kind)+badge(confidenceLabels[n.confidence],n.confidence);
+    if(n.id===data.map.startNodeId)badges+=badge('起点','start');
+    if(n.id===data.map.endNodeId)badges+=badge('终点','end');
+    el.innerHTML='<div class="badges">'+badges+'</div><div class="symbol">'+esc(n.symbol)+'</div><div class="summary">'+esc(n.summary)+'</div><div class="detail">'+esc(n.kind==='data'?n.representation:n.action)+'</div>';
+    el.onclick=function(){selectNode(n.id)};
+    el.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();selectNode(n.id)}};
+    drag(el,n.id);board.appendChild(el);
+  }
+  const cardById=new Map([...board.querySelectorAll('.card')].map(function(el){return [el.dataset.id,el]}));
+  columns.forEach(function(entry){
+    let y=54;
+    entry[1].forEach(function(id){const el=cardById.get(id),x=54+entry[0]*302;pos[id]={x:x,y:y};el.style.left=x+'px';el.style.top=y+'px';y+=el.offsetHeight+28});
+  });
+  const saved=useSaved?savedPositions():{};
+  for(const id of Object.keys(saved)){pos[id]=saved[id];const el=cardById.get(id);el.style.left=pos[id].x+'px';el.style.top=pos[id].y+'px'}
+  fitBoard();draw();
+  document.getElementById('welcome').style.display='none';
+  search.disabled=false;document.getElementById('resetBtn').disabled=false;
+  applySearch();
+  if(selected&&selected.kind==='node'&&nodes.has(selected.id))selectNode(selected.id);
+  else if(selected&&selected.kind==='flow'&&data.flows[selected.index])selectFlow(selected.index);
+  else selectNode(data.map.startNodeId||data.nodes[0].id);
+}
+function center(el){return {x:el.offsetLeft+el.offsetWidth/2,y:el.offsetTop+el.offsetHeight/2}}
+function curve(a,b,offset){
+  const A=center(a),B=center(b),dx=B.x-A.x,dy=B.y-A.y;
+  if(a===b){const x=a.offsetLeft+a.offsetWidth,y=A.y,reach=80+Math.min(50,Math.abs(offset));return {d:'M '+x+' '+(y-11)+' C '+(x+reach)+' '+(y-85+offset)+', '+(x+reach)+' '+(y+85+offset)+', '+x+' '+(y+11),x:x+reach-11,y:y+offset-4}}
+  if(Math.abs(dx)>Math.abs(dy)*.7){
+    const dir=dx>=0?1:-1,x1=A.x+dir*a.offsetWidth/2,x2=B.x-dir*b.offsetWidth/2;
+    const bend=Math.max(36,Math.abs(x2-x1)/2);
+    return {d:'M '+x1+' '+A.y+' C '+(x1+dir*bend)+' '+(A.y+offset)+', '+(x2-dir*bend)+' '+(B.y+offset)+', '+x2+' '+B.y,x:(x1+x2)/2,y:(A.y+B.y)/2+offset*.75-8};
+  }
+  const dir=dy>=0?1:-1,y1=A.y+dir*a.offsetHeight/2,y2=B.y-dir*b.offsetHeight/2,bend=Math.max(30,Math.abs(y2-y1)/2);
+  return {d:'M '+A.x+' '+y1+' C '+(A.x+offset)+' '+(y1+dir*bend)+', '+(B.x+offset)+' '+(y2-dir*bend)+', '+B.x+' '+y2,x:(A.x+B.x)/2+offset*.75,y:(y1+y2)/2-8};
+}
+function svg(tag){return document.createElementNS('http://www.w3.org/2000/svg',tag)}
+function draw(){
+  edges.querySelectorAll('.edge-group').forEach(function(el){el.remove()});
+  const cards=new Map([...board.querySelectorAll('.card')].map(function(el){return [el.dataset.id,el]}));
+  const pairs=new Map(),offsets=new Map();
+  data.flows.forEach(function(f,i){const key=JSON.stringify([f.from,f.to].sort());if(!pairs.has(key))pairs.set(key,[]);pairs.get(key).push(i)});
+  pairs.forEach(function(indices){indices.forEach(function(i,j){offsets.set(i,(j-(indices.length-1)/2)*32)})});
+  data.flows.forEach(function(f,i){
+    const geometry=curve(cards.get(f.from),cards.get(f.to),offsets.get(i));
+    const group=svg('g');group.setAttribute('class','edge-group '+f.flowKind+(corridorEdges.has(i)?' onpath':'')+((f.flowKind==='input'||f.flowKind==='output')?' structural':''));
+    group.setAttribute('data-flow-index',String(i));group.setAttribute('tabindex','0');group.setAttribute('role','button');
+    group.setAttribute('aria-label',nodes.get(f.from).symbol+' 到 '+nodes.get(f.to).symbol+'：'+flowLabels[f.flowKind]);
+    const line=svg('path');line.setAttribute('class','edge-line');line.setAttribute('d',geometry.d);line.setAttribute('marker-end','url(#arrow)');
+    const hit=svg('path');hit.setAttribute('class','edge-hit');hit.setAttribute('d',geometry.d);
+    const label=svg('text');label.setAttribute('class','edge-label');label.setAttribute('x',String(geometry.x));label.setAttribute('y',String(geometry.y));label.setAttribute('text-anchor','middle');label.textContent=flowLabels[f.flowKind];
+    group.appendChild(line);group.appendChild(hit);group.appendChild(label);
+    group.onclick=function(){selectFlow(i)};
+    group.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();selectFlow(i)}};
+    edges.appendChild(group);
+  });
+  updateSelection();
+}
+function updateSelection(){
+  board.querySelectorAll('.card').forEach(function(el){el.classList.toggle('selected',!!selected&&selected.kind==='node'&&selected.id===el.dataset.id)});
+  edges.querySelectorAll('.edge-group').forEach(function(el){el.classList.toggle('selected',!!selected&&selected.kind==='flow'&&selected.index===Number(el.dataset.flowIndex))});
+}
+function sourceList(items){return '<ul class="source-list">'+items.map(function(item){return '<li>'+esc(item)+'</li>'}).join('')+'</ul>'}
+function section(title,body){return '<div class="section"><h3>'+esc(title)+'</h3>'+body+'</div>'}
+function value(text){return '<div class="value">'+esc(text)+'</div>'}
+function compare(title,ids){
+  const unique=[...new Set(ids)].filter(function(id){return nodes.get(id).kind==='data'});
+  if(!unique.length)return '';
+  return section(title,unique.map(function(id){return snapshot(nodes.get(id))}).join(''));
+}
+function snapshot(n){return '<div class="compare"><div class="name">'+esc(n.symbol)+'</div>'+value(n.kind==='data'?n.representation:n.action)+'</div>'}
+function selectNode(id){
+  selected={kind:'node',id:id};updateSelection();
+  const n=nodes.get(id);
+  let html='<h2>'+esc(n.symbol)+'</h2><div class="lead">'+esc(n.summary)+'</div>';
+  html+=section('类型与可信度',value((n.kind==='data'?'数据表示':'处理代码')+' · '+confidenceLabels[n.confidence]));
+  html+=section(n.kind==='data'?'当前数据表示':'处理动作',value(n.kind==='data'?n.representation:n.action));
+  if(n.lifetime)html+=section('有效期',value(n.lifetime));
+  if(n.definition)html+=section('定义位置',value(n.definition));
+  if(n.evidence&&n.evidence.length)html+=section('节点源码依据',sourceList(n.evidence));
+  if(n.kind==='transform'){
+    html+=compare('输入表示',data.flows.filter(function(f){return f.to===id}).map(function(f){return f.from}));
+    html+=compare('输出表示',data.flows.filter(function(f){return f.from===id}).map(function(f){return f.to}));
+  }
+  const related=[];
+  data.flows.forEach(function(f,i){if(f.from===id||f.to===id)related.push({flow:f,index:i})});
+  if(related.length)html+=section('数据流',related.map(function(item){
+    const f=item.flow,outgoing=f.from===id,other=nodes.get(outgoing?f.to:f.from);
+    return '<button class="relation" type="button" data-flow-index="'+item.index+'"><span class="rel-head">'+(outgoing?'→ ':'← ')+esc(flowLabels[f.flowKind])+' · '+esc(other.symbol)+'</span><span class="rel-desc">'+esc(f.description||'')+(f.description?' · ':'')+esc(confidenceLabels[f.confidence])+'</span></button>';
+  }).join(''));
+  side.innerHTML=html;
+}
+function selectFlow(index){
+  selected={kind:'flow',index:index};updateSelection();
+  const f=data.flows[index],from=nodes.get(f.from),to=nodes.get(f.to);
+  let html='<h2>'+esc(from.symbol)+' → '+esc(to.symbol)+'</h2><div class="lead">'+esc(flowLabels[f.flowKind])+(f.description?' · '+esc(f.description):'')+'</div>';
+  html+=section('数据流可信度',value(confidenceLabels[f.confidence]));
+  html+=section(from.kind==='data'?'来源数据表示':'来源处理',snapshot(from));
+  html+=section(to.kind==='data'?'去向数据表示':'去向处理',snapshot(to));
+  if(f.evidence&&f.evidence.length)html+=section('连线源码依据',sourceList(f.evidence));
+  side.innerHTML=html;
+}
+side.onclick=function(e){const button=e.target.closest('[data-flow-index]');if(button&&side.contains(button))selectFlow(Number(button.dataset.flowIndex))};
+function drag(el,id){
+  let down=false,moved=false,sx=0,sy=0,ox=0,oy=0;
+  el.onpointerdown=function(e){if(e.button!==0)return;down=true;moved=false;sx=e.clientX;sy=e.clientY;ox=pos[id].x;oy=pos[id].y;el.setPointerCapture(e.pointerId)};
+  el.onpointermove=function(e){if(!down)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;if(!moved)return;pos[id]={x:Math.max(8,ox+dx),y:Math.max(8,oy+dy)};el.style.left=pos[id].x+'px';el.style.top=pos[id].y+'px';fitBoard();draw();applySearch()};
+  el.onpointerup=function(){if(down&&moved)save();down=false};
+  el.onpointercancel=function(){down=false};
+}
+function applySearch(){
+  if(!data)return;
+  const q=search.value.trim().toLowerCase(),matches=new Set(),flowMatches=new Set();
+  if(q){
+    data.nodes.forEach(function(n){const content=[n.symbol,n.summary,n.representation,n.action,n.lifetime,n.definition].concat(n.evidence||[]).join(' ').toLowerCase();if(content.includes(q))matches.add(n.id)});
+    data.flows.forEach(function(f,i){const content=[f.flowKind,flowLabels[f.flowKind],f.description].concat(f.evidence||[]).join(' ').toLowerCase();if(content.includes(q)){flowMatches.add(i);matches.add(f.from);matches.add(f.to)}});
+  }
+  board.querySelectorAll('.card').forEach(function(el){const hit=matches.has(el.dataset.id);el.classList.toggle('match',!!q&&hit);el.classList.toggle('search-dim',!!q&&!hit)});
+  edges.querySelectorAll('.edge-group').forEach(function(el){const i=Number(el.dataset.flowIndex),f=data.flows[i],hit=flowMatches.has(i)||(matches.has(f.from)&&matches.has(f.to));el.classList.toggle('search-dim',!!q&&!hit)});
+}
+function showError(err){notice.textContent='加载失败：'+String(err&&err.message||err);notice.hidden=false}
+function clearError(){notice.hidden=true;notice.textContent=''}
+function load(d){
+  validate(d);data=d;nodes=new Map(d.nodes.map(function(n){return [n.id,n]}));
+  signature=JSON.stringify([d.nodes.map(function(n){return [n.id,n.summary,n.kind==='data'?n.representation:n.action]}),d.flows.map(function(f){return [f.from,f.to,f.flowKind]})]);
+  selected=null;graph();render(true);
+  document.getElementById('mapTitle').textContent=d.map.title;
+  document.getElementById('mapMeta').textContent=d.nodes.length+' 个节点 · '+d.flows.length+' 条数据流';
+  document.getElementById('description').textContent=d.map.description||'';
+  clearError();
+}
+function parse(text){try{load(JSON.parse(text))}catch(e){showError(e)}}
+function readFile(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(){parse(reader.result)};
+  reader.onerror=function(){showError('读取文件失败')};
+  reader.readAsText(file,'utf-8');
+}
+const fileInput=document.getElementById('fileInput');
+function chooseFile(){fileInput.click()}
+document.getElementById('loadBtn').onclick=chooseFile;
+document.getElementById('welcomeLoadBtn').onclick=chooseFile;
+fileInput.onchange=function(){readFile(fileInput.files[0]);fileInput.value=''};
+const drop=document.getElementById('dropOverlay');
+let hideDropTimer=null;
+function cancelHideDrop(){if(hideDropTimer!==null)clearTimeout(hideDropTimer);hideDropTimer=null}
+function hideDrop(){cancelHideDrop();drop.classList.remove('show')}
+function showDrop(e){
+  if(!e.dataTransfer||!Array.from(e.dataTransfer.types||[]).includes('Files'))return;
+  e.preventDefault();cancelHideDrop();drop.classList.add('show');
+}
+window.addEventListener('dragenter',showDrop);
+window.addEventListener('dragover',showDrop);
+window.addEventListener('dragleave',function(e){
+  if(!drop.classList.contains('show'))return;
+  e.preventDefault();cancelHideDrop();
+  hideDropTimer=setTimeout(hideDrop,180);
+});
+window.addEventListener('drop',function(e){
+  e.preventDefault();hideDrop();
+  readFile(e.dataTransfer.files&&e.dataTransfer.files[0]);
+});
+document.getElementById('resetBtn').onclick=function(){try{localStorage.removeItem(storageKey())}catch{}selected=null;render(false)};
+search.oninput=applySearch;
+window.addEventListener('resize',function(){if(data){fitBoard();draw();applySearch()}});
+if(location.protocol!=='file:'){
+  const path=new URLSearchParams(location.search).get('data')||'data-flow-map.json';
+  fetch(path).then(function(r){if(!r.ok)throw Error('无法读取 '+path);return r.text()}).then(parse).catch(showError);
+}
+})();
+</script>
+</body>
+</html>

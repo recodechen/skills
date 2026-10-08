@@ -1,0 +1,357 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "system-map.schema.json",
+  "title": "System Map Semantic Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "map",
+    "nodes",
+    "tree"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "map": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "rootId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rootId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "contextPath": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Global ancestor labels before the exported local root; display context only, not additional nodes."
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "root"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "group"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "symbol",
+              "symbolKind",
+              "summary",
+              "role",
+              "confidence"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "code"
+              },
+              "symbol": {
+                "type": "string",
+                "minLength": 1
+              },
+              "symbolKind": {
+                "enum": [
+                  "class",
+                  "struct",
+                  "interface",
+                  "enum",
+                  "namespace",
+                  "function",
+                  "method",
+                  "module",
+                  "target",
+                  "other"
+                ]
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "confidence": {
+                "enum": [
+                  "confirmed",
+                  "inferred",
+                  "unresolved"
+                ],
+                "description": "Required for code nodes; use unresolved when evidence is insufficient. Confirmed requires current-source evidence."
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "definition": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Source evidence retained for verification, hidden in the viewer."
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "confidence": {
+                      "const": "confirmed"
+                    }
+                  },
+                  "required": [
+                    "confidence"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "evidence"
+                  ],
+                  "properties": {
+                    "evidence": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": "Current-source evidence required for confirmed code nodes; hidden in the viewer."
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "tree": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "parent",
+          "child"
+        ],
+        "properties": {
+          "parent": {
+            "type": "string",
+            "minLength": 1
+          },
+          "child": {
+            "type": "string",
+            "minLength": 1
+          },
+          "order": {
+            "type": "integer"
+          }
+        }
+      },
+      "description": "Primary reading position only; does not imply ownership, inheritance or runtime order. Every non-root node has exactly one parent and is reachable from map.rootId."
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "relationKind",
+          "confidence"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1
+          },
+          "relationKind": {
+            "enum": [
+              "ownership",
+              "containment",
+              "inheritance",
+              "creation",
+              "destruction",
+              "handle_reference",
+              "reference",
+              "registration",
+              "lookup",
+              "resolution",
+              "publication",
+              "consumption",
+              "production",
+              "dependency"
+            ],
+            "description": "Fixed machine-readable semantic relation. The viewer converts it to a Chinese label."
+          },
+          "description": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "confirmed",
+              "inferred",
+              "unresolved"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Source evidence for this directed relation, hidden in the viewer."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "confidence": {
+                  "const": "confirmed"
+                }
+              },
+              "required": [
+                "confidence"
+              ]
+            },
+            "then": {
+              "required": [
+                "evidence"
+              ],
+              "properties": {
+                "evidence": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "Current-source evidence required for confirmed relationships; hidden in the viewer."
+                }
+              }
+            }
+          }
+        ]
+      },
+      "default": [],
+      "description": "Directed semantic relationships. relationKind uses a fixed machine vocabulary; all visible labels are produced by the viewer in Chinese."
+    }
+  },
+  "$comment": "Graph invariants (unique IDs, references, single connected acyclic tree) are checked by the viewer. Confirmed code nodes and relations require current-source evidence."
+}

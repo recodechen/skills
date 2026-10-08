@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "1.0",
+  "map": {
+    "id": "ue5-data-flow-example",
+    "title": "UE5 数据流转图示例",
+    "description": "仅演示 Data Flow Map 的数据格式。UE5 数据路径未针对具体源码版本核验，因此全部标为 inferred。",
+    "startNodeId": "primitive-proxy",
+    "endNodeId": "mesh-draw-command"
+  },
+  "nodes": [
+    {
+      "id": "primitive-proxy",
+      "kind": "data",
+      "symbol": "FPrimitiveSceneProxy",
+      "symbolKind": "class",
+      "summary": "场景 Primitive 在渲染侧的表示。",
+      "representation": "提供该 Primitive 的渲染相关信息，并可参与生成 Mesh 描述。",
+      "confidence": "inferred"
+    },
+    {
+      "id": "get-dynamic-mesh",
+      "kind": "transform",
+      "symbol": "FPrimitiveSceneProxy::GetDynamicMeshElements",
+      "symbolKind": "method",
+      "summary": "从 Primitive Proxy 收集动态 Mesh 描述的入口。",
+      "action": "根据当前视图收集可提交给后续 Mesh 流程的描述。",
+      "confidence": "inferred"
+    },
+    {
+      "id": "mesh-batch",
+      "kind": "data",
+      "symbol": "FMeshBatch",
+      "symbolKind": "struct",
+      "summary": "描述一次 Mesh 绘制所需的几何与材质等信息。",
+      "representation": "仍是相对中性的 Mesh 描述，还不是最终 GPU Draw 命令。",
+      "confidence": "inferred"
+    },
+    {
+      "id": "mesh-pass-processor",
+      "kind": "transform",
+      "symbol": "FMeshPassProcessor::AddMeshBatch",
+      "symbolKind": "method",
+      "summary": "把 Mesh 描述送入具体 Mesh Pass 处理。",
+      "action": "结合 Pass 规则处理 FMeshBatch，并为后续 Draw Command 构建准备信息。",
+      "confidence": "inferred"
+    },
+    {
+      "id": "mesh-draw-command",
+      "kind": "data",
+      "symbol": "FMeshDrawCommand",
+      "symbolKind": "struct",
+      "summary": "面向 Mesh Drawing Pipeline 的绘制命令表示。",
+      "representation": "已经比 FMeshBatch 更接近具体 Pass 的可执行绘制状态。",
+      "confidence": "inferred"
+    }
+  ],
+  "flows": [
+    {
+      "from": "primitive-proxy",
+      "to": "get-dynamic-mesh",
+      "flowKind": "input",
+      "description": "Primitive Proxy 作为动态 Mesh 收集的来源。",
+      "confidence": "inferred"
+    },
+    {
+      "from": "get-dynamic-mesh",
+      "to": "mesh-batch",
+      "flowKind": "output",
+      "description": "收集得到 FMeshBatch 描述。",
+      "confidence": "inferred"
+    },
+    {
+      "from": "mesh-batch",
+      "to": "mesh-pass-processor",
+      "flowKind": "input",
+      "description": "FMeshBatch 进入具体 Mesh Pass 处理。",
+      "confidence": "inferred"
+    },
+    {
+      "from": "mesh-pass-processor",
+      "to": "mesh-draw-command",
+      "flowKind": "transform",
+      "description": "Pass 处理把中性 Mesh 描述推进到更具体的 Draw Command 表示。",
+      "confidence": "inferred"
+    }
+  ]
+}

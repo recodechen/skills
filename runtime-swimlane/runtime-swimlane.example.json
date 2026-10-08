@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1.0",
+  "map": {
+    "id": "ue5-runtime-swimlane-example",
+    "title": "UE5 泳道时序图示例",
+    "description": "仅演示 Runtime Swimlane 的数据格式。UE5 调用顺序未针对具体源码版本核验，因此全部标为 inferred。",
+    "scenario": "从游戏帧推进到场景 Renderer 开始执行的一条简化路径。",
+    "startStepId": "tick",
+    "endStepId": "render"
+  },
+  "lanes": [
+    {
+      "id": "engine",
+      "name": "Game Engine",
+      "kind": "object",
+      "symbol": "UGameEngine",
+      "summary": "游戏侧高层帧入口。"
+    },
+    {
+      "id": "viewport",
+      "name": "Viewport",
+      "kind": "object",
+      "symbol": "FViewport",
+      "summary": "承接视口绘制。"
+    },
+    {
+      "id": "viewport-client",
+      "name": "Viewport Client",
+      "kind": "object",
+      "symbol": "UGameViewportClient",
+      "summary": "组织视图并进入场景绘制。"
+    },
+    {
+      "id": "renderer",
+      "name": "Scene Renderer",
+      "kind": "object",
+      "symbol": "FSceneRenderer",
+      "summary": "执行场景渲染。"
+    }
+  ],
+  "steps": [
+    {
+      "id": "tick",
+      "laneId": "engine",
+      "order": 10,
+      "symbol": "UGameEngine::Tick",
+      "symbolKind": "method",
+      "action": "推进一帧游戏循环，并进入需要显示的视口更新。",
+      "phase": "帧入口",
+      "kind": "call",
+      "confidence": "inferred"
+    },
+    {
+      "id": "viewport-draw",
+      "laneId": "viewport",
+      "order": 20,
+      "symbol": "FViewport::Draw",
+      "symbolKind": "method",
+      "action": "开始当前视口的一次绘制。",
+      "phase": "视口绘制",
+      "kind": "call",
+      "confidence": "inferred"
+    },
+    {
+      "id": "client-draw",
+      "laneId": "viewport-client",
+      "order": 30,
+      "symbol": "UGameViewportClient::Draw",
+      "symbolKind": "method",
+      "action": "组织当前 View / ViewFamily，并提交场景绘制。",
+      "phase": "视图组织",
+      "kind": "work",
+      "confidence": "inferred"
+    },
+    {
+      "id": "render",
+      "laneId": "renderer",
+      "order": 40,
+      "symbol": "FSceneRenderer::Render",
+      "symbolKind": "method",
+      "action": "读取场景与视图输入，进入场景渲染流程。",
+      "phase": "场景渲染",
+      "kind": "work",
+      "confidence": "inferred"
+    }
+  ],
+  "flows": [
+    {
+      "from": "tick",
+      "to": "viewport-draw",
+      "flowKind": "call",
+      "label": "进入视口绘制",
+      "confidence": "inferred"
+    },
+    {
+      "from": "viewport-draw",
+      "to": "client-draw",
+      "flowKind": "call",
+      "label": "交给 ViewportClient",
+      "confidence": "inferred"
+    },
+    {
+      "from": "client-draw",
+      "to": "render",
+      "flowKind": "handoff",
+      "label": "把场景视图交给 Renderer",
+      "confidence": "inferred"
+    }
+  ]
+}

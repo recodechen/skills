@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data-flow-map.schema.json",
+  "title": "Data Flow Map Semantic Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "map",
+    "nodes",
+    "flows"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "map": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "startNodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endNodeId": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "symbol",
+              "symbolKind",
+              "summary",
+              "representation",
+              "confidence"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "data"
+              },
+              "symbol": {
+                "type": "string",
+                "minLength": 1
+              },
+              "symbolKind": {
+                "enum": [
+                  "class",
+                  "struct",
+                  "type",
+                  "buffer",
+                  "resource",
+                  "object",
+                  "other"
+                ]
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "representation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lifetime": {
+                "type": "string"
+              },
+              "confidence": {
+                "enum": [
+                  "confirmed",
+                  "inferred",
+                  "unresolved"
+                ]
+              },
+              "definition": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "confidence": {
+                      "const": "confirmed"
+                    }
+                  },
+                  "required": [
+                    "confidence"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "evidence"
+                  ],
+                  "properties": {
+                    "evidence": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "symbol",
+              "symbolKind",
+              "summary",
+              "action",
+              "confidence"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "transform"
+              },
+              "symbol": {
+                "type": "string",
+                "minLength": 1
+              },
+              "symbolKind": {
+                "enum": [
+                  "class",
+                  "struct",
+                  "function",
+                  "method",
+                  "module",
+                  "other"
+                ]
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1
+              },
+              "confidence": {
+                "enum": [
+                  "confirmed",
+                  "inferred",
+                  "unresolved"
+                ]
+              },
+              "definition": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "confidence": {
+                      "const": "confirmed"
+                    }
+                  },
+                  "required": [
+                    "confidence"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "evidence"
+                  ],
+                  "properties": {
+                    "evidence": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "flowKind",
+          "confidence"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1
+          },
+          "flowKind": {
+            "enum": [
+              "input",
+              "output",
+              "transform",
+              "resolve",
+              "filter",
+              "copy",
+              "reference",
+              "publish",
+              "upload",
+              "aggregate",
+              "split",
+              "cache",
+              "handoff"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "confirmed",
+              "inferred",
+              "unresolved"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "confidence": {
+                  "const": "confirmed"
+                }
+              },
+              "required": [
+                "confidence"
+              ]
+            },
+            "then": {
+              "required": [
+                "evidence"
+              ],
+              "properties": {
+                "evidence": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$comment": "Endpoint existence and source-backed data/transform semantics are checked beyond JSON Schema."
+}

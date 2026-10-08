@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "1.0",
+  "map": {
+    "id": "responsibility-viewer-example",
+    "title": "Responsibility Map 查看器职责示例",
+    "description": "以本目录 index.html 为源码，说明解析后的 JSON 如何经过校验、布局和绘制。",
+    "startId": "load",
+    "endId": "draw"
+  },
+  "nodes": [
+    {
+      "id": "setup-loader",
+      "symbol": "setupLoader",
+      "symbolKind": "function",
+      "category": "输入",
+      "summary": "接收 JSON 文件或网络响应。",
+      "responsibility": "读取输入，把解析后的 JSON 交给加载回调。",
+      "confidence": "confirmed",
+      "definition": "index.html:333",
+      "evidence": [
+        "index.html:333-397 — setupLoader 处理文件选择、拖放和网络读取，解析 JSON 后调用 onData。"
+      ]
+    },
+    {
+      "id": "load",
+      "symbol": "load",
+      "symbolKind": "function",
+      "category": "加载",
+      "summary": "把一份 JSON 交给查看器。",
+      "responsibility": "先校验数据，再安排布局和界面绘制。",
+      "notResponsibleFor": [
+        "不读取文件或网络响应；这由 setupLoader 处理。"
+      ],
+      "confidence": "confirmed",
+      "definition": "index.html:323",
+      "evidence": [
+        "index.html:323-331 — load 调用 validate、layout 和 render，并更新当前数据与标题。",
+        "index.html:333-397 — setupLoader 负责读取文件和网络响应。"
+      ]
+    },
+    {
+      "id": "validate",
+      "symbol": "validate",
+      "symbolKind": "function",
+      "category": "校验",
+      "summary": "检查查看器接收的数据能否建立关系图。",
+      "responsibility": "检查版本、节点 ID、关系端点及起终点的连通性。",
+      "confidence": "confirmed",
+      "definition": "index.html:55",
+      "evidence": [
+        "index.html:55-74 — validate 检查版本、节点 ID、关系端点和起终点是否连通。"
+      ]
+    },
+    {
+      "id": "ranks",
+      "symbol": "ranks",
+      "symbolKind": "function",
+      "category": "布局计算",
+      "summary": "计算节点应放在哪一列。",
+      "responsibility": "从起点、终点或首个节点出发，按无向关系计算各节点的列次。",
+      "confidence": "confirmed",
+      "definition": "index.html:77",
+      "evidence": [
+        "index.html:76-85 — ranks 从锚点或首个节点出发计算列次，并处理不连通的节点。"
+      ]
+    },
+    {
+      "id": "layout",
+      "symbol": "layout",
+      "symbolKind": "function",
+      "category": "布局",
+      "summary": "安排节点的初始位置。",
+      "responsibility": "根据 ranks 的结果分列、设置坐标，并读取保存过的位置。",
+      "confidence": "confirmed",
+      "definition": "index.html:105",
+      "evidence": [
+        "index.html:105-117 — layout 使用 ranks 计算列次，初始化坐标并读取已保存位置。"
+      ]
+    },
+    {
+      "id": "render",
+      "symbol": "render",
+      "symbolKind": "function",
+      "category": "节点绘制",
+      "summary": "建立可见的节点卡片。",
+      "responsibility": "创建卡片、安排位置，随后交给 draw 绘制关系。",
+      "confidence": "confirmed",
+      "definition": "index.html:130",
+      "evidence": [
+        "index.html:130-176 — render 创建卡片、设置位置并调用 draw。"
+      ]
+    },
+    {
+      "id": "draw",
+      "symbol": "draw",
+      "symbolKind": "function",
+      "category": "关系绘制",
+      "summary": "画出节点之间的关系。",
+      "responsibility": "根据关系数据生成 SVG 连线、箭头和标签。",
+      "confidence": "confirmed",
+      "definition": "index.html:195",
+      "evidence": [
+        "index.html:195-228 — draw 遍历 relations 并创建 SVG 路径、箭头和标签。"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "setup-loader",
+      "to": "load",
+      "relationKind": "coordination",
+      "description": "输入处理把解析后的 JSON 交给加载函数。",
+      "confidence": "confirmed",
+      "evidence": [
+        "index.html:355-358,397 — parse 调用 onData，setupLoader 收到的回调是 load。"
+      ]
+    },
+    {
+      "from": "load",
+      "to": "validate",
+      "relationKind": "orchestration",
+      "description": "load 先让 validate 检查数据。",
+      "confidence": "confirmed",
+      "evidence": [
+        "index.html:323-330 — load 先安排校验，再安排布局和绘制；validate 承担首步。"
+      ]
+    },
+    {
+      "from": "load",
+      "to": "layout",
+      "relationKind": "orchestration",
+      "description": "load 把初始布局交给 layout。",
+      "confidence": "confirmed",
+      "evidence": [
+        "index.html:323-330 — load 按校验、布局、绘制的顺序安排职责；layout 承担布局步骤。"
+      ]
+    },
+    {
+      "from": "layout",
+      "to": "ranks",
+      "relationKind": "dependency",
+      "description": "layout 用 ranks 的结果决定列和初始坐标。",
+      "confidence": "confirmed",
+      "evidence": [
+        "index.html:105-115 — layout 调用 ranks 并使用返回的列次。"
+      ]
+    },
+    {
+      "from": "load",
+      "to": "render",
+      "relationKind": "orchestration",
+      "description": "load 把界面更新交给 render。",
+      "confidence": "confirmed",
+      "evidence": [
+        "index.html:323-330 — load 按校验、布局、绘制的顺序安排职责；render 承担绘制步骤。"
+      ]
+    },
+    {
+      "from": "render",
+      "to": "draw",
+      "relationKind": "coordination",
+      "description": "render 安排卡片位置后让 draw 绘制关系。",
+      "confidence": "confirmed",
+      "evidence": [
+        "index.html:130-170 — render 设置卡片位置后调用 draw。"
+      ]
+    }
+  ]
+}

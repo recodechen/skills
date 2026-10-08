@@ -1,0 +1,300 @@
+{
+  "schemaVersion": "1.0",
+  "map": {
+    "id": "ue5-reference",
+    "title": "UE5 System Map 示例",
+    "rootId": "project",
+    "description": "仅演示 System Map 的数据格式；UE5 代码节点和关系未针对具体源码版本核验，均作为推断示意。主树表示阅读位置，不代表所有权、继承或执行顺序。"
+  },
+  "nodes": [
+    {
+      "id": "project",
+      "kind": "root",
+      "name": "UE5",
+      "summary": "示例根节点。",
+      "role": "作为整张示例地图的入口。"
+    },
+    {
+      "id": "g_world",
+      "kind": "group",
+      "name": "世界与对象",
+      "summary": "把世界、关卡和 Actor 相关代码放在一起。",
+      "role": "只用于帮助阅读。"
+    },
+    {
+      "id": "g_asset",
+      "kind": "group",
+      "name": "资源与组件",
+      "summary": "把组件和它引用的资源放在一起。",
+      "role": "只用于帮助阅读。"
+    },
+    {
+      "id": "g_render",
+      "kind": "group",
+      "name": "渲染",
+      "summary": "把渲染侧核心对象放在一起。",
+      "role": "只用于帮助阅读。"
+    },
+    {
+      "id": "uworld",
+      "kind": "code",
+      "symbol": "UWorld",
+      "symbolKind": "class",
+      "summary": "表示一个可运行的世界。",
+      "role": "保存世界级入口，并关联关卡和其他世界对象。",
+      "hasMore": true,
+      "confidence": "inferred",
+      "aliases": [
+        "世界入口"
+      ]
+    },
+    {
+      "id": "ulevel",
+      "kind": "code",
+      "symbol": "ULevel",
+      "symbolKind": "class",
+      "summary": "表示世界中的一个关卡。",
+      "role": "把一批场景对象组织在一个关卡中。",
+      "hasMore": true,
+      "confidence": "inferred"
+    },
+    {
+      "id": "actor",
+      "kind": "code",
+      "symbol": "AActor",
+      "symbolKind": "class",
+      "summary": "表示世界中的一个对象。",
+      "role": "把对象自己的数据和挂接在它上面的组件组织在一起。",
+      "hasMore": true,
+      "confidence": "inferred"
+    },
+    {
+      "id": "component",
+      "kind": "code",
+      "symbol": "UActorComponent",
+      "symbolKind": "class",
+      "summary": "给 Actor 增加一块可复用能力或数据。",
+      "role": "把不同能力拆开挂到 Actor 上。",
+      "hasMore": true,
+      "confidence": "inferred"
+    },
+    {
+      "id": "smc",
+      "kind": "code",
+      "symbol": "UStaticMeshComponent",
+      "symbolKind": "class",
+      "summary": "让一个 Actor 可以显示静态网格。",
+      "role": "保存要显示的静态网格和材质引用，并向渲染侧提供数据。",
+      "hasMore": true,
+      "confidence": "inferred"
+    },
+    {
+      "id": "mesh",
+      "kind": "code",
+      "symbol": "UStaticMesh",
+      "symbolKind": "class",
+      "summary": "保存静态网格资源。",
+      "role": "给组件提供物体形状等几何数据。",
+      "confidence": "inferred"
+    },
+    {
+      "id": "material",
+      "kind": "code",
+      "symbol": "UMaterialInterface",
+      "symbolKind": "class",
+      "summary": "表示可以分配给物体表面的材质入口。",
+      "role": "告诉渲染代码这个表面应使用什么材质设置。",
+      "hasMore": true,
+      "confidence": "inferred"
+    },
+    {
+      "id": "texture",
+      "kind": "code",
+      "symbol": "UTexture2D",
+      "symbolKind": "class",
+      "summary": "保存二维纹理资源。",
+      "role": "给材质或界面提供图像数据。",
+      "confidence": "inferred"
+    },
+    {
+      "id": "sceneProxy",
+      "kind": "code",
+      "symbol": "FStaticMeshSceneProxy",
+      "symbolKind": "class",
+      "summary": "保存静态网格组件在渲染侧需要的数据。",
+      "role": "让渲染侧不用直接读取完整组件，也能取得绘制静态网格需要的信息。",
+      "hasMore": true,
+      "confidence": "inferred"
+    },
+    {
+      "id": "scene",
+      "kind": "code",
+      "symbol": "FScene",
+      "symbolKind": "class",
+      "summary": "保存渲染系统当前要处理的场景内容。",
+      "role": "把需要渲染的场景对象集中起来。",
+      "hasMore": true,
+      "confidence": "inferred"
+    },
+    {
+      "id": "view",
+      "kind": "code",
+      "symbol": "FSceneView",
+      "symbolKind": "class",
+      "summary": "表示一次具体的观察视角。",
+      "role": "告诉渲染代码从哪里看场景。",
+      "confidence": "inferred"
+    },
+    {
+      "id": "renderer",
+      "kind": "code",
+      "symbol": "FSceneRenderer",
+      "symbolKind": "class",
+      "summary": "负责组织一次场景渲染。",
+      "role": "读取场景和视图信息，安排实际绘制工作。",
+      "hasMore": true,
+      "confidence": "inferred"
+    }
+  ],
+  "tree": [
+    {
+      "parent": "project",
+      "child": "g_world",
+      "order": 10
+    },
+    {
+      "parent": "project",
+      "child": "g_asset",
+      "order": 20
+    },
+    {
+      "parent": "project",
+      "child": "g_render",
+      "order": 30
+    },
+    {
+      "parent": "g_world",
+      "child": "uworld",
+      "order": 10
+    },
+    {
+      "parent": "uworld",
+      "child": "ulevel",
+      "order": 10
+    },
+    {
+      "parent": "ulevel",
+      "child": "actor",
+      "order": 10
+    },
+    {
+      "parent": "actor",
+      "child": "component",
+      "order": 10
+    },
+    {
+      "parent": "g_asset",
+      "child": "smc",
+      "order": 10
+    },
+    {
+      "parent": "smc",
+      "child": "mesh",
+      "order": 10
+    },
+    {
+      "parent": "smc",
+      "child": "material",
+      "order": 20
+    },
+    {
+      "parent": "material",
+      "child": "texture",
+      "order": 10
+    },
+    {
+      "parent": "smc",
+      "child": "sceneProxy",
+      "order": 30
+    },
+    {
+      "parent": "g_render",
+      "child": "scene",
+      "order": 10
+    },
+    {
+      "parent": "scene",
+      "child": "view",
+      "order": 10
+    },
+    {
+      "parent": "view",
+      "child": "renderer",
+      "order": 10
+    }
+  ],
+  "relations": [
+    {
+      "from": "uworld",
+      "to": "ulevel",
+      "relationKind": "containment",
+      "confidence": "inferred"
+    },
+    {
+      "from": "ulevel",
+      "to": "actor",
+      "relationKind": "containment",
+      "confidence": "inferred"
+    },
+    {
+      "from": "actor",
+      "to": "component",
+      "relationKind": "containment",
+      "confidence": "inferred"
+    },
+    {
+      "from": "smc",
+      "to": "mesh",
+      "relationKind": "reference",
+      "confidence": "inferred"
+    },
+    {
+      "from": "smc",
+      "to": "material",
+      "relationKind": "reference",
+      "confidence": "inferred"
+    },
+    {
+      "from": "material",
+      "to": "texture",
+      "relationKind": "reference",
+      "confidence": "inferred"
+    },
+    {
+      "from": "smc",
+      "to": "sceneProxy",
+      "relationKind": "creation",
+      "confidence": "inferred"
+    },
+    {
+      "from": "sceneProxy",
+      "to": "scene",
+      "relationKind": "registration",
+      "confidence": "inferred"
+    },
+    {
+      "from": "renderer",
+      "to": "scene",
+      "relationKind": "dependency",
+      "description": "FSceneRenderer 需要 FScene 提供场景内容。",
+      "confidence": "inferred"
+    },
+    {
+      "from": "renderer",
+      "to": "view",
+      "relationKind": "dependency",
+      "description": "FSceneRenderer 需要 FSceneView 提供观察视角。",
+      "confidence": "inferred"
+    }
+  ]
+}

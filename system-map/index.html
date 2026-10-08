@@ -1,0 +1,921 @@
+<!doctype html>
+<!-- Author: chenhh -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>System Map</title>
+<style>
+:root{
+  --bg:#f6f8fb;--panel:#fff;--text:#172033;--muted:#667085;--line:#cfd6e4;
+  --accent:#2f6fed;--accent-soft:#eaf1ff;--group:#eef2f7;--node:#fff;
+  --node-border:#cfd6e4;--warn:#9a4f00;--danger:#b42318;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;font-family:Inter,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--text);background:var(--bg);overflow:hidden;
+}
+button,input{font:inherit}
+.app{height:100%;display:grid;grid-template-rows:58px 1fr}
+.topbar{
+  display:flex;align-items:center;gap:10px;padding:0 16px;background:#fff;
+  border-bottom:1px solid #e7eaf0;
+}
+.brand{font-weight:750;white-space:nowrap}
+.map-description{margin:10px 0;color:var(--muted);font-size:13px;white-space:pre-wrap}
+.map-title{color:#667085;font-size:13px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.search{margin-left:10px;flex:1;max-width:520px;position:relative}
+.search input{
+  width:100%;height:36px;border:1px solid #d5dae5;border-radius:8px;
+  padding:0 12px 0 34px;outline:none;background:#fbfcfe
+}
+.search:before{content:"⌕";position:absolute;left:11px;top:6px;color:#8992a3;font-size:20px}
+.toolbar{margin-left:auto;display:flex;gap:7px}
+.btn{
+  height:34px;padding:0 11px;border:1px solid #d6dce8;border-radius:8px;
+  background:#fff;color:#344054;cursor:pointer;white-space:nowrap
+}
+.btn:hover{background:#f7f9fc}
+.btn.active{background:var(--accent-soft);border-color:#b7ccff;color:#1f5bd8}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 360px;min-height:0}
+.canvas-wrap{position:relative;overflow:auto;padding:18px 18px 28px}
+.breadcrumb{
+  position:sticky;top:0;z-index:5;display:inline-flex;align-items:center;gap:6px;
+  min-height:34px;padding:7px 10px;background:rgba(255,255,255,.94);
+  border:1px solid #e2e7f0;border-radius:8px;color:#526078;font-size:13px
+}
+.map-shell{
+  position:relative;min-width:1100px;min-height:680px;margin-top:14px;
+  background:
+    linear-gradient(#eef1f6 1px,transparent 1px),
+    linear-gradient(90deg,#eef1f6 1px,transparent 1px);
+  background-size:24px 24px;border:1px solid #e4e8f0;border-radius:14px;overflow:hidden;
+}
+#treeEdges,#relationEdges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#treeEdges path{stroke:#c6cedd;stroke-width:1.7;fill:none}
+#relationEdges path{stroke:#7b8baa;stroke-width:1.55;fill:none;stroke-dasharray:6 6;opacity:.72}
+#relationEdges text{
+  font-size:11px;fill:#56647c;paint-order:stroke;stroke:white;stroke-width:4px;stroke-linejoin:round
+}
+.node{
+  position:absolute;min-width:148px;max-width:210px;padding:10px 12px;
+  background:var(--node);border:1px solid var(--node-border);border-radius:10px;
+  box-shadow:0 5px 14px rgba(40,54,94,.07);
+  cursor:grab;user-select:none;touch-action:none;transition:box-shadow .15s ease,opacity .15s ease;
+}
+.node:active{cursor:grabbing}
+.node:hover{box-shadow:0 8px 20px rgba(40,54,94,.12)}
+.node.dragging{z-index:20;box-shadow:0 12px 30px rgba(40,54,94,.20);cursor:grabbing}
+.node.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,237,.12),0 8px 22px rgba(40,54,94,.12)}
+.node.match{outline:3px solid #f3c969;outline-offset:2px}
+.node.hidden-node{display:none}
+.node .name{font-weight:720;font-size:14px;line-height:1.25;padding-right:24px;word-break:break-word}
+.node .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:5px;color:var(--muted);font-size:12px;line-height:1.45}
+.node.root{background:#172033;color:#fff;border-color:#172033;min-width:165px}
+.node.root .desc{color:#cbd4e5}
+.node.group{background:var(--group);border-style:dashed;box-shadow:none}
+.node.group .name{font-weight:650;color:#39465d}
+.node.group:before{
+  content:"分组";display:inline-block;margin-bottom:6px;padding:1px 6px;border-radius:999px;
+  background:#dfe5ee;color:#59667c;font-size:10px;font-weight:650
+}
+.more-badge{
+  display:inline-block;margin-top:6px;padding:1px 6px;border-radius:999px;
+  background:#f3f5f8;color:#7d8799;font-size:10px
+}
+.collapse-btn{
+  position:absolute;right:7px;top:7px;width:20px;height:20px;padding:0;
+  border:1px solid #cfd6e4;border-radius:6px;background:#fff;color:#475467;
+  font-size:14px;line-height:18px;text-align:center;cursor:pointer;z-index:5
+}
+.collapse-btn:hover{background:#eef3fb;border-color:#b8c8e6}
+.node.root .collapse-btn{background:#28354d;color:#fff;border-color:#44516a}
+.node.group .collapse-btn{background:#f8fafc}
+.tooltip{
+  position:fixed;z-index:40;max-width:340px;padding:9px 10px;background:#101828;color:#fff;
+  border-radius:8px;font-size:12px;line-height:1.5;pointer-events:none;opacity:0;
+  transform:translateY(4px);transition:.1s ease
+}
+.tooltip.show{opacity:1;transform:none}
+.side{background:#fff;border-left:1px solid #e1e6ee;overflow:auto;padding:18px}
+.side h2{margin:0;font-size:20px;word-break:break-word}
+.kind{margin-top:5px;color:var(--muted);font-size:12px}
+.section{margin-top:20px}
+.section h3{margin:0 0 8px;font-size:12px;color:#7c879a;letter-spacing:.04em}
+.value{font-size:14px;line-height:1.65}
+.pill{
+  display:inline-block;margin:3px 4px 3px 0;padding:4px 8px;border-radius:999px;
+  background:#f1f4f8;color:#475467;font-size:12px
+}
+.rel{
+  display:grid;grid-template-columns:92px 1fr;gap:8px;padding:7px 0;
+  border-bottom:1px dashed #edf0f5;font-size:13px
+}
+.rel:last-child{border-bottom:0}
+.rel .type{color:#667085}
+.confidence{font-size:12px}
+.confidence.confirmed{color:#027a48}
+.confidence.inferred{color:#9a6700}
+.confidence.unresolved{color:#b42318}
+.note{
+  margin-top:18px;padding:10px 12px;background:#fff8eb;border:1px solid #f5d7a7;
+  color:#875a18;border-radius:8px;font-size:12px;line-height:1.55
+}
+.empty{margin-top:80px;text-align:center;color:#98a2b3;font-size:14px;line-height:1.8}
+.side-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.small{
+  height:30px;padding:0 10px;border:1px solid #d7dde8;border-radius:7px;background:#fff;
+  cursor:pointer;font-size:12px
+}
+.small:hover{background:#f7f9fc}
+.legend{
+  position:absolute;left:14px;bottom:14px;z-index:5;padding:8px 10px;
+  background:rgba(255,255,255,.94);border:1px solid #e2e7ef;border-radius:8px;
+  color:#687386;font-size:11px
+}
+.legend span{display:inline-flex;align-items:center;margin-right:12px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;background:#fff;border:1px solid #bcc6d5}
+.dot.group{background:#eef2f7;border-style:dashed}
+.dot.cross{background:#7b8baa;border:none}
+.drag-hint{
+  position:absolute;right:14px;bottom:14px;z-index:5;padding:7px 9px;
+  background:rgba(23,32,51,.88);color:white;border-radius:7px;font-size:11px
+}
+.drop-overlay{
+  position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+  background:rgba(20,28,45,.72);color:#fff;font-size:24px;font-weight:700
+}
+.drop-overlay.show{display:flex}
+.welcome{
+  position:absolute;inset:0;z-index:15;display:flex;align-items:center;justify-content:center;
+  padding:30px;background:rgba(246,248,251,.92)
+}
+.welcome-card{
+  width:min(520px,90%);padding:28px;background:#fff;border:1px solid #e1e6ee;border-radius:14px;
+  box-shadow:0 18px 50px rgba(30,45,90,.12);text-align:center
+}
+.welcome-card h2{margin:0 0 10px}
+.welcome-card p{color:#667085;line-height:1.7;font-size:14px}
+.error{color:var(--danger);white-space:pre-wrap;text-align:left;background:#fff1f0;padding:10px;border-radius:8px;margin-top:12px;font-size:12px}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">System Map</div>
+    <div id="mapTitle" class="map-title">未加载数据</div>
+    <div class="search">
+      <input id="searchInput" placeholder="搜索代码符号、别名、说明或位置…" disabled />
+    </div>
+    <div class="toolbar">
+      <button id="loadBtn" class="btn">加载 JSON</button>
+      <button id="relationsBtn" class="btn" disabled>显示关系</button>
+      <button id="expandAllBtn" class="btn" disabled>全部展开</button>
+      <button id="resetLayoutBtn" class="btn" disabled>恢复布局</button>
+      <button id="resetViewBtn" class="btn" disabled>恢复视图</button>
+    </div>
+    <input id="fileInput" type="file" accept=".json,application/json" />
+  </header>
+
+  <main class="main">
+    <section class="canvas-wrap">
+      <div id="breadcrumb" class="breadcrumb">尚未加载地图</div>
+      <div id="mapDescription" class="map-description"></div>
+      <div id="map" class="map-shell">
+        <svg id="treeEdges"></svg>
+        <svg id="relationEdges" style="display:none">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5"
+                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#7b8baa"></path>
+            </marker>
+          </defs>
+        </svg>
+
+        <div class="legend">
+          <span><i class="dot"></i>真实代码节点</span>
+          <span><i class="dot group"></i>视觉分组</span>
+          <span><i class="dot cross"></i>语义关系</span>
+        </div>
+        <div class="drag-hint">拖动节点 · 右上角 − / + 收缩或展开子节点</div>
+
+        <div id="welcome" class="welcome">
+          <div class="welcome-card">
+            <h2>加载 System Map JSON</h2>
+            <p>
+              本页面不包含任何工程数据，只消费固定语义 JSON。<br>
+              可以点击“加载 JSON”，或把 JSON 文件直接拖到页面中。
+            </p>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">选择 JSON 文件</button>
+            <div id="welcomeError" class="error" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside id="side" class="side">
+      <div class="empty">
+        加载 JSON 后，点击节点查看说明。<br>
+        代码节点名称来自 JSON 中的真实源码符号；<br>
+        页面本身不包含任何工程专用逻辑。
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div id="tooltip" class="tooltip"></div>
+<div id="dropOverlay" class="drop-overlay">松开以加载 JSON</div>
+
+<script>
+(() => {
+"use strict";
+
+const SUPPORTED_SCHEMA = "1.0";
+
+const els = {
+  map: document.getElementById("map"),
+  mapDescription: document.getElementById("mapDescription"),
+  side: document.getElementById("side"),
+  breadcrumb: document.getElementById("breadcrumb"),
+  tooltip: document.getElementById("tooltip"),
+  search: document.getElementById("searchInput"),
+  fileInput: document.getElementById("fileInput"),
+  loadBtn: document.getElementById("loadBtn"),
+  relationsBtn: document.getElementById("relationsBtn"),
+  expandAllBtn: document.getElementById("expandAllBtn"),
+  resetLayoutBtn: document.getElementById("resetLayoutBtn"),
+  resetViewBtn: document.getElementById("resetViewBtn"),
+  treeEdges: document.getElementById("treeEdges"),
+  relationEdges: document.getElementById("relationEdges"),
+  mapTitle: document.getElementById("mapTitle"),
+  welcome: document.getElementById("welcome"),
+  welcomeError: document.getElementById("welcomeError"),
+  dropOverlay: document.getElementById("dropOverlay")
+};
+
+let model = null;
+let nodes = [];
+let nodeMap = new Map();
+let children = new Map();
+let parent = new Map();
+let orderedTree = [];
+let relations = [];
+let collapsed = new Set();
+let selected = null;
+let focusRoot = null;
+let showRelations = false;
+let dragState = null;
+let storagePrefix = "system-map";
+
+const symbolKindCn = {
+  class:"类", struct:"结构体", interface:"接口", enum:"枚举",
+  namespace:"命名空间", function:"函数", method:"成员函数",
+  module:"模块", target:"构建目标", other:"代码符号"
+};
+const confidenceCn = {
+  confirmed:"已确认", inferred:"推断", unresolved:"未确认"
+};
+const relationKindCn = {
+  ownership:"拥有",
+  containment:"包含",
+  inheritance:"继承",
+  creation:"创建",
+  destruction:"销毁",
+  handle_reference:"持有句柄",
+  reference:"引用",
+  registration:"注册",
+  lookup:"查找",
+  resolution:"解析",
+  publication:"发布",
+  consumption:"消费",
+  production:"生产",
+  dependency:"依赖"
+};
+
+function escapeHtml(v){
+  return String(v ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;")
+    .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function displayName(n){
+  return n.kind === "code" ? n.symbol : n.name;
+}
+
+// Structural checks mirror system-map.schema.json; graph checks follow below.
+function validate(data){
+  const errors = [];
+  const object = v => v !== null && typeof v === "object" && !Array.isArray(v);
+  const string = v => typeof v === "string";
+  const nonempty = v => string(v) && v.length > 0;
+  const strings = v => Array.isArray(v) && v.every(string);
+  const nonemptyStrings = v => Array.isArray(v) && v.every(nonempty);
+  const confidence = v => ["confirmed","inferred","unresolved"].includes(v);
+  const relationKind = v => typeof v === "string" && Object.hasOwn(relationKindCn,v);
+  function fields(value, path, required, rules){
+    if(!object(value)){ errors.push(`${path} 必须是对象。`); return false; }
+    for(const key of required){
+      if(!Object.hasOwn(value,key)) errors.push(`${path} 缺少 ${key}。`);
+    }
+    for(const [key,v] of Object.entries(value)){
+      if(!Object.hasOwn(rules,key)) errors.push(`${path} 包含未知字段 ${key}。`);
+      else if(!rules[key](v)) errors.push(`${path}.${key} 的值无效。`);
+    }
+    return true;
+  }
+  if(!fields(data,"根数据",["schemaVersion","map","nodes","tree"],{
+    schemaVersion:v=>v===SUPPORTED_SCHEMA, map:object,
+    nodes:v=>Array.isArray(v)&&v.length>0, tree:Array.isArray, relations:Array.isArray
+  }) || errors.length) return errors;
+  fields(data.map,"map",["id","title","rootId"],{
+    id:nonempty,title:nonempty,rootId:nonempty,description:string,contextPath:strings
+  });
+  const common = {
+    id:nonempty,kind:v=>["root","group","code"].includes(v),
+    summary:string,role:string,hasMore:v=>typeof v==="boolean",aliases:strings
+  };
+  for(const [i,n] of data.nodes.entries()){
+    const code = n?.kind === "code";
+    const rules = code ? {...common,symbol:nonempty,confidence,evidence:nonemptyStrings,
+      symbolKind:v=>string(v)&&Object.hasOwn(symbolKindCn,v),summary:nonempty,role:nonempty,definition:string}
+      : {...common,name:nonempty};
+    fields(n,`nodes[${i}]`,code?["id","kind","symbol","symbolKind","summary","role","confidence"]:["id","kind","name"],rules);
+    if(code && n?.confidence==="confirmed" && (!Array.isArray(n.evidence) || n.evidence.length===0)){
+      errors.push(`nodes[${i}] 为已确认，但缺少非空 evidence。`);
+    }
+  }
+  for(const [i,e] of data.tree.entries()){
+    fields(e,`tree[${i}]`,["parent","child"],{parent:nonempty,child:nonempty,order:Number.isInteger});
+  }
+  for(const [i,r] of (data.relations||[]).entries()){
+    fields(r,`relations[${i}]`,["from","to","relationKind","confidence"],{
+      from:nonempty,to:nonempty,relationKind,description:string,confidence,evidence:nonemptyStrings
+    });
+    if(r?.confidence==="confirmed" && (!Array.isArray(r.evidence) || r.evidence.length===0)){
+      errors.push(`relations[${i}] 为已确认，但缺少非空 evidence。`);
+    }
+  }
+  if(errors.length) return errors;
+
+  const ids = new Set();
+  for(const n of data.nodes){
+    if(ids.has(n.id)) errors.push(`节点 id 重复：${n.id}`);
+    ids.add(n.id);
+  }
+  const rootId = data.map.rootId;
+  const root = data.nodes.find(n=>n.id===rootId);
+  if(!root) errors.push("map.rootId 必须指向现有节点。");
+  else if(root.kind==="group") errors.push("map.rootId 必须指向工程根节点或聚焦的代码节点。");
+  for(const n of data.nodes){
+    if(n.kind==="root" && n.id!==rootId) errors.push(`额外的工程根节点：${n.id}`);
+  }
+  const parents = new Map(), ch = new Map(data.nodes.map(n=>[n.id,[]]));
+  for(const e of data.tree){
+    if(!ids.has(e.parent)) errors.push(`tree.parent 不存在：${e.parent}`);
+    if(!ids.has(e.child)) errors.push(`tree.child 不存在：${e.child}`);
+    if(parents.has(e.child)) errors.push(`节点 ${e.child} 在主树中有多个父节点或重复边。`);
+    parents.set(e.child,e.parent);
+    ch.get(e.parent)?.push(e.child);
+  }
+  if(parents.has(rootId)) errors.push("根节点不能有父节点。");
+  for(const id of ids){
+    if(id!==rootId && !parents.has(id)) errors.push(`节点 ${id} 缺少主树父节点。`);
+  }
+  for(const r of (data.relations||[])){
+    if(!ids.has(r.from)) errors.push(`关系 from 不存在：${r.from}`);
+    if(!ids.has(r.to)) errors.push(`关系 to 不存在：${r.to}`);
+  }
+  if(errors.length) return errors;
+  // Iterative reachability also rejects detached cycles, without following them forever.
+  const visited = new Set(), stack = [rootId];
+  while(stack.length){
+    const id = stack.pop();
+    if(visited.has(id)){ errors.push(`主树存在循环：${id}`); continue; }
+    visited.add(id);
+    for(const child of ch.get(id)) stack.push(child);
+  }
+  for(const id of ids){
+    if(!visited.has(id)) errors.push(`节点 ${id} 无法从根到达，主树存在断开或循环。`);
+  }
+  return errors;
+}
+
+function buildModel(data){
+  endDrag();
+  model = JSON.parse(JSON.stringify(data));
+  data = model;
+  nodes = data.nodes;
+  nodeMap = new Map(nodes.map(n => [n.id,n]));
+  relations = [...(data.relations || [])];
+
+  children = new Map(nodes.map(n => [n.id,[]]));
+  parent = new Map();
+
+  orderedTree = [...data.tree].sort((a,b)=>(a.order??0)-(b.order??0));
+  for(const e of orderedTree){
+    children.get(e.parent)?.push(e.child);
+    parent.set(e.child,e.parent);
+  }
+
+  storagePrefix = "system-map:" + (data.map.id || data.map.title || "default");
+  const savedCollapsed = loadStorage("collapsed",[]);
+  collapsed = new Set(Array.isArray(savedCollapsed)?savedCollapsed.filter(id=>nodeMap.has(id)):[]);
+  showRelations = false;
+  selected = null;
+  focusRoot = null;
+  hideTip();
+  els.search.value = "";
+  els.relationEdges.style.display = "none";
+  els.relationsBtn.classList.remove("active");
+  els.relationsBtn.textContent = "显示关系";
+
+  renderNodes();
+  autoLayout();
+  applySavedLayout();
+  render();
+
+  els.mapDescription.textContent = data.map.description || "";
+  els.mapTitle.textContent = data.map.title || displayName(nodeMap.get(data.map.rootId));
+  document.title = (data.map.title || "System Map") + " - System Map";
+  els.welcome.style.display = "none";
+  setControlsEnabled(true);
+}
+
+function setControlsEnabled(on){
+  for(const e of [els.search,els.relationsBtn,els.expandAllBtn,els.resetLayoutBtn,els.resetViewBtn])
+    e.disabled = !on;
+}
+
+function saveStorage(key,value){
+  try{ localStorage.setItem(storagePrefix+":"+key,JSON.stringify(value)); }catch{}
+}
+function loadStorage(key,fallback){
+  try{
+    const raw = localStorage.getItem(storagePrefix+":"+key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch{ return fallback; }
+}
+
+function autoLayout(){
+  const root = model.map.rootId;
+  const x0 = 48, xGap = 250, y0 = 42, gap = 28;
+  const heights = new Map([...els.map.querySelectorAll(".node")].map(el=>[el.dataset.id,el.offsetHeight]));
+  const order = [], stack = [root], depths = new Map([[root,0]]), spans = new Map();
+  let maxDepth = 0;
+  while(stack.length){
+    const id = stack.pop();
+    order.push(id);
+    for(const child of children.get(id)){
+      depths.set(child,depths.get(id)+1);
+      maxDepth = Math.max(maxDepth,depths.get(child));
+      stack.push(child);
+    }
+  }
+  for(const id of [...order].reverse()){
+    const kids = children.get(id);
+    const childHeight = kids.reduce((sum,c)=>sum+spans.get(c),0)+Math.max(0,kids.length-1)*gap;
+    spans.set(id,Math.max(heights.get(id),childHeight));
+  }
+  const tops = new Map([[root,y0]]);
+  for(const id of order){
+    const n = nodeMap.get(id), top = tops.get(id);
+    n.x = n._defaultX = x0+depths.get(id)*xGap;
+    n.y = n._defaultY = top+(spans.get(id)-heights.get(id))/2;
+    const kids = children.get(id);
+    const total = kids.reduce((sum,c)=>sum+spans.get(c),0)+Math.max(0,kids.length-1)*gap;
+    let childTop = top+(spans.get(id)-total)/2;
+    for(const child of kids){ tops.set(child,childTop); childTop+=spans.get(child)+gap; }
+  }
+  els.map.style.minWidth = Math.max(1100,140+(maxDepth+1)*xGap)+"px";
+  els.map.style.minHeight = Math.max(680,y0+spans.get(root)+100)+"px";
+}
+
+function applySavedLayout(){
+  const saved = loadStorage("layout",{});
+  if(!saved || typeof saved!=="object" || Array.isArray(saved)) return;
+  for(const n of nodes){
+    if(Object.hasOwn(saved,n.id) && saved[n.id] && Number.isFinite(saved[n.id].x) && Number.isFinite(saved[n.id].y)){
+      n.x = Math.max(8,Math.min(els.map.clientWidth-220,saved[n.id].x));
+      n.y = Math.max(8,Math.min(els.map.clientHeight-180,saved[n.id].y));
+    }
+  }
+}
+function saveLayout(){
+  const p=Object.create(null);
+  for(const n of nodes) p[n.id]={x:n.x,y:n.y};
+  saveStorage("layout",p);
+}
+function resetLayout(){
+  try{ localStorage.removeItem(storagePrefix+":layout"); }catch{}
+  for(const n of nodes){ n.x=n._defaultX; n.y=n._defaultY; }
+  renderNodes();
+  requestAnimationFrame(()=>{ applyVisibility(); if(selected) selectNode(selected); });
+}
+
+function isCollapsedHidden(id){
+  if(id===focusRoot) return false;
+  let cur=id;
+  while(parent.has(cur)){
+    const p=parent.get(cur);
+    if(collapsed.has(p)) return true;
+    if(p===focusRoot) return false;
+    cur=p;
+  }
+  return false;
+}
+function descendantsOf(id){
+  const out=new Set(), stack=[...(children.get(id)||[])];
+  while(stack.length){
+    const x=stack.pop();
+    if(out.has(x)) continue;
+    out.add(x);
+    stack.push(...(children.get(x)||[]));
+  }
+  return out;
+}
+function pathOf(id){
+  const arr=[];
+  let cur=id;
+  while(cur){
+    const n=nodeMap.get(cur);
+    if(n) arr.unshift(displayName(n));
+    cur=parent.get(cur);
+  }
+  return [...(model.map.contextPath||[]),...arr];
+}
+function hasChildren(id){ return (children.get(id)||[]).length>0; }
+
+function render(){
+  renderNodes();
+  applyVisibility();
+  els.breadcrumb.textContent = pathOf(model.map.rootId).join(" > ");
+  els.side.innerHTML = `<div class="empty">点击节点查看说明。<br>拖动节点调整位置，右上角 − / + 收缩或展开子节点。</div>`;
+}
+
+function renderNodes(){
+  els.map.querySelectorAll(".node").forEach(e=>e.remove());
+  for(const n of nodes){
+    const el=document.createElement("div");
+    el.className=`node ${n.kind==="root"?"root":""} ${n.kind==="group"?"group":""}`;
+    el.dataset.id=n.id;
+    el.style.left=(n.x||0)+"px";
+    el.style.top=(n.y||0)+"px";
+
+    const label=escapeHtml(displayName(n));
+    const summary=escapeHtml(n.summary||"");
+    const collapse=hasChildren(n.id)
+      ? `<button class="collapse-btn" title="收缩子节点">${collapsed.has(n.id)?"+":"−"}</button>`:"";
+    const more=n.hasMore?`<span class="more-badge">还有更深层内容</span>`:"";
+
+    el.innerHTML=`${collapse}<div class="name">${label}</div>${summary?`<div class="desc">${summary}</div>`:""}${more}`;
+
+    el.addEventListener("pointerdown",startDrag);
+    el.addEventListener("mouseenter",e=>showTip(e,n));
+    el.addEventListener("mousemove",moveTip);
+    el.addEventListener("mouseleave",hideTip);
+    el.addEventListener("click",e=>{
+      if(e.target.closest(".collapse-btn")) return;
+      if(!dragState) selectNode(n.id);
+    });
+
+    const cb=el.querySelector(".collapse-btn");
+    if(cb){
+      cb.addEventListener("pointerdown",e=>e.stopPropagation());
+      cb.addEventListener("click",e=>{
+        e.stopPropagation();
+        toggleCollapsed(n.id);
+      });
+    }
+    els.map.appendChild(el);
+  }
+}
+
+function startDrag(e){
+  if(e.button!==0 || e.target.closest(".collapse-btn")) return;
+  const el=e.currentTarget, n=nodeMap.get(el.dataset.id);
+  dragState={
+    id:n.id,el,startPointerX:e.clientX,startPointerY:e.clientY,
+    startX:n.x,startY:n.y,moved:false
+  };
+  el.setPointerCapture(e.pointerId);
+  el.classList.add("dragging");
+  hideTip();
+  el.addEventListener("pointermove",onDrag);
+  el.addEventListener("pointerup",endDrag,{once:true});
+  el.addEventListener("pointercancel",endDrag,{once:true});
+}
+function onDrag(e){
+  if(!dragState) return;
+  const dx=e.clientX-dragState.startPointerX, dy=e.clientY-dragState.startPointerY;
+  if(Math.abs(dx)>3 || Math.abs(dy)>3) dragState.moved=true;
+  const n=nodeMap.get(dragState.id), el=dragState.el;
+  n.x=Math.max(8,Math.min(els.map.clientWidth-el.offsetWidth-8,dragState.startX+dx));
+  n.y=Math.max(8,Math.min(els.map.clientHeight-el.offsetHeight-8,dragState.startY+dy));
+  el.style.left=n.x+"px"; el.style.top=n.y+"px";
+  drawTreeEdges(); drawRelationEdges();
+}
+function endDrag(){
+  if(!dragState) return;
+  const {el,moved}=dragState;
+  el.classList.remove("dragging");
+  el.removeEventListener("pointermove",onDrag);
+  el.removeEventListener("pointerup",endDrag);
+  el.removeEventListener("pointercancel",endDrag);
+  dragState=null;
+  if(moved) saveLayout();
+}
+
+function toggleCollapsed(id){
+  const willCollapse=!collapsed.has(id);
+  if(willCollapse){
+    const hiddenDescendants=descendantsOf(id);
+    if(selected && hiddenDescendants.has(selected)) selected=id;
+    if(focusRoot && hiddenDescendants.has(focusRoot)) focusRoot=id;
+    collapsed.add(id);
+  }else{
+    collapsed.delete(id);
+  }
+  saveStorage("collapsed",[...collapsed]);
+  applyVisibility();
+  if(selected && elementVisible(selected)) selectNode(selected);
+  else if(elementVisible(id)) selectNode(id);
+}
+function expandAll(){
+  collapsed.clear(); saveStorage("collapsed",[]);
+  applyVisibility();
+  if(selected) selectNode(selected);
+}
+
+function elementVisible(id){
+  const el=els.map.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
+  return !!el && !el.classList.contains("hidden-node");
+}
+function applyVisibility(){
+  for(const el of els.map.querySelectorAll(".node")){
+    const id=el.dataset.id;
+    const cb=el.querySelector(".collapse-btn");
+    if(cb){
+      cb.textContent=collapsed.has(id)?"+":"−";
+      cb.title=collapsed.has(id)?"展开子节点":"收缩子节点";
+    }
+  }
+  search(els.search.value);
+}
+
+function centerOf(id){
+  const el=els.map.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
+  const r=el.getBoundingClientRect(), mr=els.map.getBoundingClientRect();
+  return {x:r.left-mr.left+r.width/2,y:r.top-mr.top+r.height/2};
+}
+function curve(a,b){
+  const p1=centerOf(a),p2=centerOf(b),mid=(p1.x+p2.x)/2;
+  return {d:`M ${p1.x} ${p1.y} C ${mid} ${p1.y}, ${mid} ${p2.y}, ${p2.x} ${p2.y}`,
+          mx:(p1.x+p2.x)/2,my:(p1.y+p2.y)/2};
+}
+function drawTreeEdges(){
+  els.treeEdges.innerHTML="";
+  for(const e of orderedTree){
+    if(!elementVisible(e.parent)||!elementVisible(e.child)) continue;
+    const c=curve(e.parent,e.child);
+    const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d",c.d); els.treeEdges.appendChild(p);
+  }
+}
+function drawRelationEdges(){
+  const defs=els.relationEdges.querySelector("defs")?.outerHTML || "";
+  els.relationEdges.innerHTML=defs;
+  if(!showRelations) return;
+  for(const r of relations){
+    if(!elementVisible(r.from)||!elementVisible(r.to)) continue;
+    const c=curve(r.from,r.to);
+    const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d",c.d); p.setAttribute("marker-end","url(#arrow)");
+    els.relationEdges.appendChild(p);
+    const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",c.mx); t.setAttribute("y",c.my-5);
+    const label=relationKindCn[r.relationKind]||"未确认关系";
+    t.setAttribute("text-anchor","middle"); t.textContent=label+(r.confidence==="confirmed"?"":`（${confidenceCn[r.confidence]||"未确认"}）`);
+    els.relationEdges.appendChild(t);
+  }
+}
+
+function showTip(e,n){
+  if(dragState) return;
+  const summary=escapeHtml(n.summary||"");
+  const role=escapeHtml(n.role||"");
+  els.tooltip.innerHTML=`<b>${escapeHtml(displayName(n))}</b>${summary?`<br>${summary}`:""}${role?`<br><span style="color:#c8d1df">${role}</span>`:""}`;
+  els.tooltip.classList.add("show"); moveTip(e);
+}
+function moveTip(e){
+  if(dragState) return;
+  els.tooltip.style.left=(e.clientX+14)+"px";
+  els.tooltip.style.top=(e.clientY+14)+"px";
+}
+function hideTip(){ els.tooltip.classList.remove("show"); }
+
+function relationRows(id){
+  const rows=[];
+  for(const r of relations){
+    const label=relationKindCn[r.relationKind]||"未确认关系";
+    if(r.from===id){
+      rows.push({type:label,target:displayName(nodeMap.get(r.to)),dir:"out",confidence:r.confidence,description:r.description});
+    }else if(r.to===id){
+      rows.push({type:label+"（来自）",target:displayName(nodeMap.get(r.from)),dir:"in",confidence:r.confidence,description:r.description});
+    }
+  }
+  return rows;
+}
+function ownersOf(id){
+  return relations.filter(r=>r.to===id && r.relationKind==="ownership" && r.confidence==="confirmed").map(r=>displayName(nodeMap.get(r.from)));
+}
+function relatedNames(id){
+  const s=new Set();
+  for(const r of relations){
+    if(r.from===id) s.add(displayName(nodeMap.get(r.to)));
+    if(r.to===id) s.add(displayName(nodeMap.get(r.from)));
+  }
+  return [...s];
+}
+function selectNode(id){
+  if(!nodeMap.has(id) || !elementVisible(id)) return;
+  selected=id;
+  for(const el of els.map.querySelectorAll(".node"))
+    el.classList.toggle("selected",el.dataset.id===id);
+
+  const n=nodeMap.get(id);
+  els.breadcrumb.textContent=(focusRoot?"聚焦："+pathOf(focusRoot).join(" > ")+" | 当前：":"")+pathOf(id).join(" > ");
+
+  if(n.kind==="group"){
+    els.side.innerHTML=`
+      <h2>${escapeHtml(n.name)}</h2>
+      <div class="kind">视觉分组，不是代码节点</div>
+      <div class="section"><h3>说明</h3><div class="value">${escapeHtml(n.summary||"未提供")}</div></div>
+      <div class="section"><h3>作用</h3><div class="value">${escapeHtml(n.role||"用于组织地图内容。")}</div></div>
+      <div class="side-actions">
+        ${hasChildren(id)?`<button class="small" data-action="toggle">${collapsed.has(id)?"展开子节点":"收缩子节点"}</button>`:""}
+        <button class="small" data-action="focus">只看这个分组</button>
+      </div>`;
+    return;
+  }
+
+  const rels=relationRows(id);
+  const owners=ownersOf(id);
+  const related=relatedNames(id);
+  const kind=n.kind==="root"?"工程根节点":(symbolKindCn[n.symbolKind]||"真实代码节点");
+  const conf=confidenceCn[n.confidence]||"未确认";
+  const confClass=n.confidence||"";
+  const confSection=n.kind==="code"?`<div class="section"><h3>结论状态</h3><div class="value confidence ${escapeHtml(confClass)}">${escapeHtml(conf)}</div></div>`:"";
+  const def=n.kind==="code"&&n.definition?`<div class="section"><h3>主要定义位置</h3><div class="value">${escapeHtml(n.definition)}</div></div>`:"";
+
+  els.side.innerHTML=`
+    <h2>${escapeHtml(displayName(n))}</h2>
+    <div class="kind">${escapeHtml(kind)}</div>
+
+    <div class="section"><h3>在整个系统中的位置</h3><div class="value">${pathOf(id).map(escapeHtml).join(" → ")}</div></div>
+    <div class="section"><h3>它是什么</h3><div class="value">${escapeHtml(n.summary||"未提供说明")}</div></div>
+    <div class="section"><h3>它主要干什么</h3><div class="value">${escapeHtml(n.role||"未提供说明")}</div></div>
+    <div class="section"><h3>谁拥有它</h3><div class="value">${owners.length?owners.map(x=>`<span class="pill">${escapeHtml(x)}</span>`).join(""):"未确认"}</div></div>
+    <div class="section"><h3>直接相关对象</h3><div class="value">${related.length?related.map(x=>`<span class="pill">${escapeHtml(x)}</span>`).join(""):"无"}</div></div>
+
+    <div class="section"><h3>关键关系</h3><div class="value">
+      ${rels.length?rels.map(r=>`<div class="rel"><div class="type">${escapeHtml(r.type)}<div class="confidence ${escapeHtml(r.confidence||"unresolved")}">${escapeHtml(confidenceCn[r.confidence]||"未确认")}</div></div><div>${escapeHtml(r.target)}${r.description?`<div class="kind">${escapeHtml(r.description)}</div>`:""}</div></div>`).join(""):"当前没有额外关系"}
+    </div></div>
+
+    <div class="section"><h3>更深层内容</h3><div class="value">${n.hasMore?"有。当前 JSON 没有继续展开，或受生成深度限制。":"当前 JSON 未标记更深层内容。"}</div></div>
+    ${confSection}
+    ${def}
+
+    <div class="side-actions">
+      ${hasChildren(id)?`<button class="small" data-action="toggle">${collapsed.has(id)?"展开子节点":"收缩子节点"}</button>`:""}
+      <button class="small" data-action="focus">聚焦此节点</button>
+      <button class="small" data-action="reset">恢复全图</button>
+    </div>`;
+}
+
+function focus(id){
+  if(!nodeMap.has(id)) return;
+  focusRoot=id;
+  els.search.value="";
+  applyVisibility();
+  selectNode(id);
+  els.map.querySelector(`.node[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({block:"center",inline:"center"});
+}
+function resetFocus(){
+  focusRoot=null;
+  applyVisibility();
+  els.breadcrumb.textContent=pathOf(selected||model.map.rootId).join(" > ");
+}
+
+function resetView(){
+  els.search.value="";
+  resetFocus(); expandAll();
+}
+
+function search(q){
+  q=q.trim().toLowerCase();
+  const matches=new Set(), reveal=new Set();
+  for(const n of nodes){
+    const hay=[displayName(n),n.summary,n.role,n.definition,...(n.aliases||[]),...pathOf(n.id)]
+      .filter(Boolean).join(" ").toLowerCase();
+    if(q && hay.includes(q)){
+      matches.add(n.id);
+      let cur=n.id;
+      while(cur){ reveal.add(cur); cur=parent.get(cur); }
+    }
+  }
+  const focused=focusRoot?new Set([focusRoot,...descendantsOf(focusRoot)]):null;
+  for(const el of els.map.querySelectorAll(".node")){
+    const id=el.dataset.id;
+    el.classList.toggle("match",matches.has(id));
+    el.classList.toggle("hidden-node",q?!reveal.has(id):isCollapsedHidden(id)||(focused!==null&&!focused.has(id)));
+  }
+  drawTreeEdges(); drawRelationEdges();
+}
+
+let loadRequest=0;
+async function loadFromFile(file){
+  const request=++loadRequest;
+  try{
+    const text=await file.text();
+    const data=JSON.parse(text);
+    if(request===loadRequest) loadData(data);
+  }catch(err){ if(request===loadRequest) showLoadError(err.message||String(err)); }
+}
+function loadData(data){
+  const errors=validate(data);
+  if(errors.length){ showLoadError(errors.join("\n")); return; }
+  els.welcomeError.style.display="none";
+  buildModel(data);
+}
+function showLoadError(msg){
+  els.welcome.style.display="flex";
+  els.welcomeError.style.display="block";
+  els.welcomeError.textContent=msg;
+}
+
+async function tryAutoLoad(){
+  if(location.protocol==="file:") return;
+  const request=loadRequest;
+  const params=new URLSearchParams(location.search);
+  const url=params.get("data") || "system-map.json";
+  try{
+    const res=await fetch(url,{cache:"no-store"});
+    if(!res.ok){ if(params.has("data")) throw new Error(`加载失败：HTTP ${res.status}`); return; }
+    const data=await res.json();
+    if(request===loadRequest) loadData(data);
+  }catch(err){ if(request===loadRequest) showLoadError(err.message||String(err)); }
+}
+
+els.loadBtn.addEventListener("click",()=>els.fileInput.click());
+els.fileInput.addEventListener("change",()=>{
+  const file=els.fileInput.files[0];
+  els.fileInput.value="";
+  if(file) loadFromFile(file);
+});
+els.side.addEventListener("click",e=>{
+  const action=e.target.closest("[data-action]")?.dataset.action;
+  if(action==="toggle" && selected) toggleCollapsed(selected);
+  if(action==="focus" && selected) focus(selected);
+  if(action==="reset") resetFocus();
+});
+els.search.addEventListener("input",e=>search(e.target.value));
+els.relationsBtn.addEventListener("click",()=>{
+  showRelations=!showRelations;
+  els.relationEdges.style.display=showRelations?"block":"none";
+  els.relationsBtn.classList.toggle("active",showRelations);
+  els.relationsBtn.textContent=showRelations?"隐藏关系":"显示关系";
+  drawRelationEdges();
+});
+els.expandAllBtn.addEventListener("click",expandAll);
+els.resetLayoutBtn.addEventListener("click",resetLayout);
+els.resetViewBtn.addEventListener("click",resetView);
+
+window.addEventListener("resize",()=>{ if(model){drawTreeEdges();drawRelationEdges();} });
+
+let dragCounter=0;
+window.addEventListener("dragenter",e=>{ e.preventDefault(); dragCounter++; els.dropOverlay.classList.add("show"); });
+window.addEventListener("dragover",e=>e.preventDefault());
+window.addEventListener("dragleave",e=>{ e.preventDefault(); dragCounter--; if(dragCounter<=0){dragCounter=0;els.dropOverlay.classList.remove("show");} });
+window.addEventListener("drop",e=>{
+  e.preventDefault(); dragCounter=0; els.dropOverlay.classList.remove("show");
+  const f=[...e.dataTransfer.files].find(x=>x.name.toLowerCase().endsWith(".json"));
+  if(f) loadFromFile(f);
+});
+
+window.SystemMap = {
+  validateData:validate,
+  loadData,
+  toggleCollapsed,
+  focus,
+  resetFocus
+};
+
+tryAutoLoad();
+})();
+</script>
+</body>
+</html>
