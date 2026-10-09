@@ -26,7 +26,7 @@ Preserve established architecture boundaries, ownership, lifecycle, state, data 
 
 ## Implementation Principles
 
-- Explicit project constraints override generic best practices.
+- Explicit project constraints override generic best practices. The project instruction file (for example `AGENTS.md`) governs task scope, permissions, test design, and validation; where this skill's generic guidance differs, follow the project instruction file.
 - Treat project design as the implementation baseline, not as an immutable rule. Understand the design intent instead of mechanically reproducing the written design.
 - If current implementation conditions support a simpler, more correct, or more coherent solution, the design may be adjusted when the change is evidence-based, scoped, and consistent with Occam's razor.
 - Do not introduce extra complexity merely to preserve an existing design, but do not change the design merely because another approach exists.
@@ -42,11 +42,11 @@ Preserve established architecture boundaries, ownership, lifecycle, state, data 
 - Prefer fixing the underlying cause over adding compensating logic around it.
 - Make only the changes required by the target step; avoid unrelated refactoring, cleanup, or formatting.
 - Preserve existing user changes and do not revert unrelated modifications.
-- Add or update tests for important behavior, boundary conditions, and failure paths introduced or changed by the implementation.
+- Add or update tests only as the project's test policy requires: cover important behavior, boundary conditions, and failure paths introduced or changed by the implementation that existing tests do not already verify. If the project defers formal tests to a stage or group closure, follow that timing instead of adding tests for every step.
 
 ## Validation
 
-Run the relevant build and tests when available.
+Run the relevant build and tests within the validation levels, commands, and permissions defined by the project instructions; do not cross a validation boundary the project reserves for the user.
 
 If validation fails:
 

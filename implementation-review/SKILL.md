@@ -25,11 +25,11 @@ Check for:
 * ownership, lifecycle, state, concurrency, or failure-semantic problems;
 * avoidable data movement or repeated work, including redundant copies, conversions, temporary intermediates, recomputation, or repeated traversals;
 * unnecessary state, mechanisms, abstractions, or duplicate sources of truth;
-* missing tests for important behavior or failure paths.
+* missing tests for important behavior or failure paths, judged against the project's test policy.
 
 Principles:
 
-* Project design and explicit project constraints override generic best practices.
+* Project design and explicit project constraints override generic best practices. The project instruction file (for example `AGENTS.md`) governs scope, permissions, test design, and validation; where this skill's generic guidance differs, follow the project instruction file.
 * If the target section conflicts with current project design or explicit constraints, establish the applicable requirement from project evidence before judging the implementation. If the conflict remains unresolved, report it as a limitation rather than an implementation defect.
 * Do not invent requirements that are not supported by the project.
 * Report only issues supported by concrete evidence.
