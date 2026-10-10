@@ -9,20 +9,22 @@ Implement the development step identified by the user.
 
 The request should identify:
 
-- the development plan file;
-- the target: a step to implement, or findings to fix from the review document written by implementation-review (default: `<plan file stem>_review.md` in the same directory as the plan file). For findings, the reviewed section serves as the target step in the rules below.
+- `plan_doc`: the development plan file;
+- the target, one of:
+  - `plan_step`: the step to implement;
+  - findings to fix from `review_doc`, the review document written by implementation-review (default: `<plan_doc stem>_review.md` in the same directory as `plan_doc`). For findings, the reviewed `plan_section` serves as `plan_step` in the rules below.
 
 Accept these in natural language; do not require a fixed argument format.
 
-If the plan file or target cannot be identified unambiguously from the request and available context, ask the user for clarification before editing; do not guess.
+If `plan_doc` or the target cannot be identified unambiguously from the request and available context, ask the user for clarification before editing; do not guess.
 
-Read the target step or findings first, then read only the relevant design, instruction, source, and test files needed to implement it correctly. If a finding requires a design decision or work outside the reviewed section, do not implement it; report that it needs a plan revision first.
+Read `plan_step` or the findings first, then read only the relevant design, instruction, source, and test files needed to implement it correctly. If a finding requires a design decision or work outside the reviewed `plan_section`, do not implement it; report that it needs a plan revision first.
 
 Retrieve context selectively. Prefer targeted symbol, reference, text, or file searches over broadly reading unrelated files or large documents.
 
-Before changing code, understand the existing implementation and the actual intent of the target step.
+Before changing code, understand the existing implementation and the actual intent of `plan_step`.
 
-Preserve established architecture boundaries, ownership, lifecycle, state, data flow, concurrency, and failure semantics unless the target step or a clearly better implementation requires changing them.
+Preserve established architecture boundaries, ownership, lifecycle, state, data flow, concurrency, and failure semantics unless `plan_step` or a clearly better implementation requires changing them.
 
 ## Implementation Principles
 
@@ -30,9 +32,9 @@ Preserve established architecture boundaries, ownership, lifecycle, state, data 
 - Treat project design as the implementation baseline, not as an immutable rule. Understand the design intent instead of mechanically reproducing the written design.
 - If current implementation conditions support a simpler, more correct, or more coherent solution, the design may be adjusted when the change is evidence-based, scoped, and consistent with Occam's razor.
 - Do not introduce extra complexity merely to preserve an existing design, but do not change the design merely because another approach exists.
-- Implement the target step completely, but do not expand its scope into later development stages.
+- Implement `plan_step` completely, but do not expand its scope into later development stages.
 - Do not invent requirements that are not supported by the project.
-- If the target step conflicts with explicit project constraints, do not bypass, weaken, or silently reinterpret those constraints; report the conflict clearly.
+- If `plan_step` conflicts with explicit project constraints, do not bypass, weaken, or silently reinterpret those constraints; report the conflict clearly.
 - If the existing design no longer fits the current implementation conditions, compare adapting the design with preserving it and choose the simpler, more correct, and more coherent solution. When adjusting the design, explain the reason and the affected scope.
 - If a design adjustment changes documented decisions, acceptance criteria, or assumptions of later plan steps, update the affected authoritative documents and plan sections as part of the implementation. If project constraints or task scope prevent the required updates, do not implement a divergent design; report the conflict.
 - Prefer the simplest correct implementation that satisfies the current requirement.
@@ -40,7 +42,7 @@ Preserve established architecture boundaries, ownership, lifecycle, state, data 
 - Reuse existing mechanisms when they already satisfy the requirement; do not create parallel implementations or duplicate sources of truth.
 - Avoid unnecessary data movement or repeated work, including redundant copies, conversions, temporary intermediates, recomputation, or repeated traversals, unless removing them would reduce clarity, weaken correctness, or break clear responsibility boundaries.
 - Prefer fixing the underlying cause over adding compensating logic around it.
-- Make only the changes required by the target step; avoid unrelated refactoring, cleanup, or formatting.
+- Make only the changes required by `plan_step`; avoid unrelated refactoring, cleanup, or formatting.
 - Preserve existing user changes and do not revert unrelated modifications.
 - Add or update tests only as the project's test policy requires: cover important behavior, boundary conditions, and failure paths introduced or changed by the implementation that existing tests do not already verify. If the project defers formal tests to a stage or group closure, follow that timing instead of adding tests for every step.
 
@@ -84,7 +86,7 @@ Before concluding, inspect the final changes for:
 - unintended modifications;
 - missing required behavior or critical tests.
 
-When the target is complete under the rule at the end of this skill, record it: mark a completed step using the plan's completion convention without deleting or summarizing its text (if the plan defines no convention, leave the plan unchanged and state completion in the output); set each fixed finding's status to `fixed` in the review document.
+When the target is complete under the rule at the end of this skill, record it: mark a completed `plan_step` using the plan's completion convention without deleting or summarizing its text (if the plan defines no convention, leave the plan unchanged and state completion in the output); set each fixed finding's status to `fixed` in `review_doc`.
 
 ## Output
 

@@ -9,26 +9,26 @@ Review the completed implementation identified by the user.
 
 The request should identify:
 
-* the development plan file;
-* the completed section to review: one or more completed steps, or a larger group of steps.
+* `plan_doc`: the development plan file;
+* `plan_section`: the completed section to review: one or more completed steps, or a larger group of steps.
 
 It may also identify:
 
 * the code change range, such as a base revision or commit range;
-* the review document path. Default: `<plan file stem>_review.md` in the same directory as the plan file.
+* `review_doc`: the review document path. Default: `<plan_doc stem>_review.md` in the same directory as `plan_doc`.
 
 Accept these in natural language; do not require a fixed argument format.
 
-If the plan file or target section cannot be identified unambiguously from the request and available context, ask the user for clarification before reviewing; do not guess. If the identified section cannot be read, report the blocker rather than infer its content.
+If `plan_doc` or `plan_section` cannot be identified unambiguously from the request and available context, ask the user for clarification before reviewing; do not guess. If `plan_section` cannot be read, report the blocker rather than infer its content.
 
-If no change range is given, locate the changes from version-control history that references the section's step identifiers. If the range remains ambiguous, ask the user.
+If no change range is given, locate the changes from version-control history that references the step identifiers in `plan_section`. If the range remains ambiguous, ask the user.
 
-Read the target section first, including steps marked completed under the plan's convention, then read only the relevant design, instruction, source, and test files needed to verify it. When the change range is large, verify it step by step or commit by commit, then consolidate the findings and fix order across the whole section.
+Read `plan_section` first, including steps marked completed under the plan's convention, then read only the relevant design, instruction, source, and test files needed to verify it. When the change range is large, verify it step by step or commit by commit, then consolidate the findings and fix order across the whole `plan_section`.
 
 Check for:
 
 * real bugs, edge-case errors, or incomplete implementation;
-* deviations from the target section or project design;
+* deviations from `plan_section` or project design;
 * violations of layering, dependency, public API/ABI, or packaging boundaries defined by the project's authoritative documents; cite the specific section instead of restating the rule;
 * ownership, lifecycle, state, concurrency, or failure-semantic problems;
 * interfaces that work now but are hard to extend because parameters cannot express the need, or lifecycle, ownership, or handle/reference semantics are unclear;
@@ -42,7 +42,7 @@ Check for:
 Principles:
 
 * Project design and explicit project constraints override generic best practices. The project instruction file (for example `AGENTS.md`) governs scope, permissions, test design, and validation; where this skill's generic guidance differs, follow the project instruction file.
-* If the target section conflicts with current project design or explicit constraints, establish the applicable requirement from project evidence before judging the implementation. If the conflict remains unresolved, report it as a limitation rather than an implementation defect.
+* If `plan_section` conflicts with current project design or explicit constraints, establish the applicable requirement from project evidence before judging the implementation. If the conflict remains unresolved, report it as a limitation rather than an implementation defect.
 * Do not invent requirements that are not supported by the project.
 * Report only issues supported by concrete evidence.
 * Working behavior, such as a passing sample, does not exempt an unsound design.
@@ -57,7 +57,7 @@ Principles:
 
 ## Review Document
 
-Write the results to the review document; create it if it does not exist. Keep one block per reviewed section and modify only that block:
+Write the results to `review_doc`; create it if it does not exist. Keep one block per reviewed `plan_section` and modify only that block:
 
 ```markdown
 ## <section>
@@ -85,6 +85,6 @@ Fix order: <finding IDs grouped by dependencies>
 
 ## Output
 
-After writing the review document, reply with the review document path, the overall conclusion, the number of open findings by severity, and the fix order.
+After writing `review_doc`, reply with its path, the overall conclusion, the number of open findings by severity, and the fix order.
 
-Unless explicitly requested, do not modify source code or any document other than the review document.
+Unless explicitly requested, do not modify source code or any document other than `review_doc`.
