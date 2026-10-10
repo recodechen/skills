@@ -5,14 +5,16 @@ description: Implement a specified step from a development plan according to exp
 
 # Implementation Step
 
-Implement the development step identified by the user.
+Implement the plan step or fix the review findings identified by the user.
 
 The request should identify:
 
 - `plan_doc`: the development plan file;
 - the target, one of:
   - `plan_step`: the step to implement;
-  - findings to fix from `review_doc`, the review document written by implementation-review (default: `<plan_doc stem>_review.md` in the same directory as `plan_doc`). For findings, the reviewed `plan_section` serves as `plan_step` in the rules below.
+  - findings to fix from `review_doc`, the review document written by implementation-review (default: `<plan_doc stem>_review.md` in the same directory as `plan_doc`).
+
+In the rules below, `target` means the requested `plan_step` or the selected findings. In finding-fix mode, the reviewed `plan_section` provides context; it may cover multiple steps or groups and does not become the implementation target.
 
 Accept these in natural language; do not require a fixed argument format.
 
@@ -22,9 +24,9 @@ Read `plan_step` or the findings first, then read only the relevant design, inst
 
 Retrieve context selectively. Prefer targeted symbol, reference, text, or file searches over broadly reading unrelated files or large documents.
 
-Before changing code, understand the existing implementation and the actual intent of `plan_step`.
+Before changing code, understand the existing implementation and the actual intent of `target`.
 
-Preserve established architecture boundaries, ownership, lifecycle, state, data flow, concurrency, and failure semantics unless `plan_step` or a clearly better implementation requires changing them.
+Preserve established architecture boundaries, ownership, lifecycle, state, data flow, concurrency, and failure semantics unless `target` or a clearly better implementation requires changing them.
 
 ## Implementation Principles
 
@@ -32,9 +34,9 @@ Preserve established architecture boundaries, ownership, lifecycle, state, data 
 - Treat project design as the implementation baseline, not as an immutable rule. Understand the design intent instead of mechanically reproducing the written design.
 - If current implementation conditions support a simpler, more correct, or more coherent solution, the design may be adjusted when the change is evidence-based, scoped, and consistent with Occam's razor.
 - Do not introduce extra complexity merely to preserve an existing design, but do not change the design merely because another approach exists.
-- Implement `plan_step` completely, but do not expand its scope into later development stages.
+- Implement `target` completely, but do not expand its scope into later development stages or unselected findings.
 - Do not invent requirements that are not supported by the project.
-- If `plan_step` conflicts with explicit project constraints, do not bypass, weaken, or silently reinterpret those constraints; report the conflict clearly.
+- If `target` conflicts with explicit project constraints, do not bypass, weaken, or silently reinterpret those constraints; report the conflict clearly.
 - If the existing design no longer fits the current implementation conditions, compare adapting the design with preserving it and choose the simpler, more correct, and more coherent solution. When adjusting the design, explain the reason and the affected scope.
 - If a design adjustment changes documented decisions, acceptance criteria, or assumptions of later plan steps, update the affected authoritative documents and plan sections as part of the implementation. If project constraints or task scope prevent the required updates, do not implement a divergent design; report the conflict.
 - Prefer the simplest correct implementation that satisfies the current requirement.
@@ -42,23 +44,23 @@ Preserve established architecture boundaries, ownership, lifecycle, state, data 
 - Reuse existing mechanisms when they already satisfy the requirement; do not create parallel implementations or duplicate sources of truth.
 - Avoid unnecessary data movement or repeated work, including redundant copies, conversions, temporary intermediates, recomputation, or repeated traversals, unless removing them would reduce clarity, weaken correctness, or break clear responsibility boundaries.
 - Prefer fixing the underlying cause over adding compensating logic around it.
-- Make only the changes required by `plan_step`; avoid unrelated refactoring, cleanup, or formatting.
+- Make only the changes required by `target`; avoid unrelated refactoring, cleanup, or formatting.
 - Preserve existing user changes and do not revert unrelated modifications.
 - Add or update tests only as the project's test policy requires: cover important behavior, boundary conditions, and failure paths introduced or changed by the implementation that existing tests do not already verify. If the project defers formal tests to a stage or group closure, follow that timing instead of adding tests for every step.
 
 ## Review Size Guard
 
-Keep each step's diff small enough for a reviewer to fully understand in one sitting. Unless the user explicitly authorizes a larger step, treat the step as oversized when:
+Keep each implementation or finding-fix task's diff small enough for a reviewer to fully understand in one sitting. In finding-fix mode, apply this guard to the requested fix work, not the entire reviewed section. Unless the user explicitly authorizes a larger task, treat `target` as oversized when:
 
 - non-test, non-generated, non-documentation code changes are expected to exceed roughly 400 changed lines (added plus deleted);
-- the step introduces more than one new core invariant, state machine, or ownership relationship;
-- completing the step requires mixing behavior changes with an unplanned refactor, move, or mechanical migration that needs its own review. Small local adjustments required by the behavior change itself are part of that change.
+- the target introduces more than one new core invariant, state machine, or ownership relationship;
+- completing the target requires mixing behavior changes with an unplanned refactor, move, or mechanical migration that needs its own review. Small local adjustments required by the behavior change itself are part of that change.
 
-Before editing, estimate the change scale from the code the step will actually touch. During implementation, re-check the actual diff (for example with `git diff --numstat`) whenever the work grows beyond the estimate; count only this step's changes and exclude pre-existing modifications in the working tree.
+Before editing, estimate the change scale from the code the target will actually touch. During implementation, re-check the actual diff (for example with `git diff --numstat`) whenever the work grows beyond the estimate; count only this task's changes and exclude pre-existing modifications in the working tree.
 
-When the step is or becomes oversized:
+When the target is or becomes oversized:
 
-- stop coding instead of finishing the oversized step;
+- stop coding instead of finishing the oversized target;
 - do not shrink the diff by dropping required behavior, failure handling, wiring, or old-path removal;
 - keep any partial changes already made; do not revert or continue them;
 - report the current change state: which proposed sub-step each partial change belongs to, and whether the changes are known to build (do not start a build only to answer this);
@@ -86,11 +88,14 @@ Before concluding, inspect the final changes for:
 - unintended modifications;
 - missing required behavior or critical tests.
 
-When the target is complete under the rule at the end of this skill, record it: mark a completed `plan_step` using the plan's completion convention without deleting or summarizing its text (if the plan defines no convention, leave the plan unchanged and state completion in the output); set each fixed finding's status to `fixed` in `review_doc`.
+When the target is complete under the rule at the end of this skill, record the result for the active mode:
+
+- For a `plan_step`, mark it using the plan's completion convention without deleting or summarizing its text. If the plan defines no convention, leave the plan unchanged and state completion in the output.
+- For selected findings, set only the findings actually fixed to `fixed` in `review_doc`; leave other finding statuses and plan completion markers unchanged. Add unresolved findings to `plan_doc` only when the developer explicitly requests that recording.
 
 ## Output
 
-After implementation, provide a concise summary containing:
+After implementation or fixing findings, provide a concise summary containing:
 
 - what was implemented;
 - files materially changed and the approximate change scale, counted as in the Review Size Guard;
@@ -102,4 +107,4 @@ Do not list routine edits line by line.
 
 Use plain, direct language while preserving precise project terminology. Respond in the user's language unless explicitly requested otherwise.
 
-Do not claim the step is complete unless the required behavior has been implemented and the relevant validation actually performed passes. If any limitation, conflict, or incomplete item remains, state it clearly.
+Do not claim the target is complete unless the required behavior has been implemented and the relevant validation actually performed passes. If any limitation, conflict, or incomplete item remains, state it clearly.
