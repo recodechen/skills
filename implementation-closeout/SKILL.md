@@ -67,7 +67,7 @@ If `design_hint` is not provided, locate the relevant design sections from the p
 For a completed closeout, ensure that:
 
 * `plan_section` is a concise record of the documented final state, capabilities, constraints, validation conclusions and their stated limits, and remaining issues;
-* `design_doc` reflects the confirmed intended design, including approved changes recorded in the plan, and tracks remaining issues that affect later work, so it stays complete without `plan_doc`;
+* `design_doc` reflects the confirmed intended design, including approved changes recorded in the plan, and tracks remaining issues that affect later work;
 * known differences are accurately classified and recorded, with remaining implementation deviations distinguished from approved design changes and unresolved matters not presented as settled.
 
 After completion, briefly report:
