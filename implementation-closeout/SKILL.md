@@ -16,6 +16,7 @@ Required:
 Optional:
 
 * `design_hint`: chapter, module, or keywords that help locate related design content
+* `review_doc`: review document written by implementation-review; default `<plan_doc stem>_review.md` in the same directory as `plan_doc`
 
 If `design_hint` is not provided, locate the relevant design sections from the plan content, headings, terminology, and source code.
 
@@ -25,9 +26,10 @@ If `design_hint` is not provided, locate the relevant design sections from the p
 
 2. Before editing either document, inspect the relevant source code, tests, existing validation evidence, and related design content:
 
-   * confirm the implementation and the section's required outcomes without inferring a passing validation result from the presence of a test;
+   * confirm the implementation and the section's required outcomes without inferring a passing validation result from the presence of a test; if required validation evidence is missing, run the validation allowed by the project instructions to obtain it, and request evidence beyond that boundary from the user;
+   * review findings do not block closeout; the developer is responsible for resolving them. Collect the section's `open` and `accepted` findings from `review_doc`, if present, as remaining issues;
    * classify each design/implementation difference as an approved design change, an implementation deviation, or unresolved, using the project's authoritative design decisions;
-   * if a required outcome remains unmet, completion cannot be confirmed, or an implementation deviation remains, do not mark the section complete or update affected design claims; report the gap and stop affected edits. If classification is unclear, stop affected edits and request a decision.
+   * if a required outcome remains unmet, completion cannot be confirmed, or an implementation deviation not already recorded as a collected review finding remains, do not mark the section complete or update affected design claims; report the gap and stop affected edits. If classification is unclear, stop affected edits and request a decision.
 
 3. Close out `plan_section`:
 
@@ -35,7 +37,9 @@ If `design_hint` is not provided, locate the relevant design sections from the p
    * mark the section as completed using the document's existing convention;
    * restructure it as a concise, self-contained summary of the final implemented state;
    * preserve, when applicable, the final component/module structure, stable dependencies and contracts, completed capabilities, important validation evidence, verified causes of significant anomalies, downstream handoff constraints, and remaining issues;
-   * retain critical decisions and conclusions without preserving the implementation process.
+   * retain critical decisions and conclusions without preserving the implementation process;
+   * record the collected review findings under remaining issues by location and problem, without review IDs, then remove the section's block from `review_doc`;
+   * apply any other completion rules the plan defines, such as removing a completed capability from a pending-work registry.
 
 4. Update the related content in `design_doc` according to the pre-edit classification:
 
@@ -65,11 +69,12 @@ For a completed closeout, ensure that:
 * `design_doc` reflects the confirmed intended design, including approved changes exposed by the final implementation;
 * no known contradiction remains between the plan, design document, and implementation.
 
-Edit only the parts of `plan_doc` or `design_doc` that need correction.
+Edit only the parts of `plan_doc`, `design_doc`, or `review_doc` that need correction.
 
 After completion, briefly report:
 
 * what was retained in the plan section;
 * what was corrected or added in the design document;
 * any significant difference between the original design and final implementation;
+* review findings carried into remaining issues;
 * any unresolved inconsistency.

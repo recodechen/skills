@@ -22,12 +22,14 @@ During the review:
 - Treat the actual implementation as the factual baseline. Inspect relevant code and existing capabilities; do not infer implementation details from documentation alone.
 - If implementation evidence required for a material technical decision cannot be inspected, do not infer the missing facts or fabricate a final revision for that decision. Report the missing evidence as a blocking condition.
 - Check whether the plan correctly builds on the current implementation, duplicates existing capabilities, misses established constraints, or introduces unnecessary changes.
-- Check alignment with the core design, but do not follow it mechanically. If engineering facts or a clearly better long-term solution show that the core design is wrong or incomplete, establish the necessary correction and update the Core Design Document when authorized by the task and project constraints. If the correction cannot be made, do not finalize a conflicting plan decision; report the blocker.
+- Check alignment with the core design, but do not follow it mechanically. If engineering facts or a clearly better long-term solution show that the core design is wrong or incomplete, establish the necessary correction and update the Core Design Document; invoking this skill authorizes that update unless the user or project constraints restrict it. If the correction cannot be made, do not finalize a conflicting plan decision; report the blocker.
 - Check industrial standards and mature engineering practices only when they are directly relevant to the solution's core correctness, safety, critical performance, lifecycle, or key contracts. Do not produce broad standards surveys, generic theory, or boilerplate best practices. Distinguish actual standard requirements from common practice and project-specific decisions.
 - Verify the applicable version and relevant provision of any claimed standard requirement against an authoritative source, and cite it when it materially affects the plan. If the source cannot be verified, treat the claim as unconfirmed and do not base a final decision on it.
-- Check whether implementation steps are ordered and sized appropriately. Each step should represent a meaningful capability with clear dependencies and an independently verifiable result. Do not split work mechanically by files, classes, or edit operations.
-- Do not introduce temporary solutions, intermediate architecture, or other constructs that are expected to be removed later.
-- Preserve correct existing content. Change only what has a clear technical reason to change.
+- Check whether implementation steps are ordered and sized for human review. Each step must represent a meaningful capability with clear dependencies and a diff a reviewer can fully understand in one sitting. Estimate each step's change scale from the code it will actually touch. Treat a step as oversized when it is expected to exceed roughly 400 changed lines (added plus deleted) of non-test, non-generated, non-documentation code, introduces more than one new core invariant, state machine, or ownership relationship, or mixes behavior changes with a refactor, move, or mechanical migration that needs its own review. Small local adjustments required by the behavior change itself are part of that change.
+- Split oversized steps in this order: (1) separate preparatory refactors, moves, and mechanical migrations from behavior changes; (2) freeze a contract first only when the contract itself is a review decision point, such as Public API/ABI, cross-layer interfaces, or complex state models; a contract step may contain only definitions that stand without placeholder implementations, such as types, enums, descriptors, and documentation; if the contract includes operations that need implementation, merge it into the minimal working path; (3) slice behavior vertically: a minimal working path first, then additional operations, failure boundaries, and production consumers as separate steps.
+- Do not split an ordinary internal class into declaration and implementation steps, and do not split by files or edit operations. Every resulting step must build successfully on its own. Do not require each step to add its own tests; test placement follows the project's test design rules.
+- Do not introduce temporary solutions, stubs, intermediate architecture, or other constructs that are expected to be removed later.
+- Preserve correct existing content. Change only what has a clear technical reason to change. Do not rewrite steps marked completed or closed-out summaries unless the current implementation contradicts them.
 
 ## Result
 
@@ -43,6 +45,8 @@ After editing, or if a blocker prevents revision, provide a concise summary of:
 - material impact from industrial standards or mature practices, if any;
 - changes to the implementation sequence, if any;
 - unresolved decisions and blockers, if any.
+
+Respond in the user's language unless explicitly requested otherwise.
 
 ## Principle
 
