@@ -21,7 +21,7 @@ Accept these in natural language; do not require a fixed argument format.
 
 If `plan_doc` or `plan_section` cannot be identified unambiguously from the request and available context, ask the user for clarification before reviewing; do not guess. If `plan_section` cannot be read, report the blocker rather than infer its content.
 
-If no change range is given, locate the changes from version-control history that references the step identifiers in `plan_section`. If the range remains ambiguous, ask the user.
+If no change range is given, locate the changes from version-control history that reference the step identifiers in `plan_section`. If the range remains ambiguous, ask the user.
 
 Read `plan_section` first, including steps marked completed under the plan's convention, then read only the relevant design, instruction, source, and test files needed to verify it. When the change range is large, verify it step by step or commit by commit, then consolidate the findings and fix order across the whole `plan_section`.
 
@@ -44,7 +44,7 @@ Principles:
 * Project design and explicit project constraints override generic best practices. The project instruction file (for example `AGENTS.md`) governs scope, permissions, test design, and validation; where this skill's generic guidance differs, follow the project instruction file.
 * If `plan_section` conflicts with current project design or explicit constraints, establish the applicable requirement from project evidence before judging the implementation. If the conflict remains unresolved, report it as a limitation rather than an implementation defect.
 * Do not invent requirements that are not supported by the project.
-* Report only issues supported by concrete evidence.
+* Report only issues supported by concrete evidence. Report an implementation precondition as a finding only when evidence shows it can be violated in a supported scenario, or that a project requirement to state or enforce it is unmet; a precondition alone does not establish a defect. Record unverified risks under Evidence gaps, not as findings. State the material conditions a finding depends on in that finding.
 * Working behavior, such as a passing sample, does not exempt an unsound design.
 * Prefer the simplest correct implementation.
 * Apply Occam's razor: do not add complexity for patterns, standards, theoretical purity, or hypothetical future needs.
@@ -53,7 +53,10 @@ Principles:
 * Merge findings that share a root cause into one finding.
 * Recommend the smallest change that fully fixes the issue.
 * Do not report style-only preferences unless they create a real correctness or maintenance problem.
-* Use plain, direct language. Explain why each issue matters in practical terms while preserving precise project terminology.
+* Write `review_doc` and the reply in plain, direct language for a developer familiar with the project who did not take part in this review:
+  * use terminology already defined by the project's documents and instruction file, plus exact code identifiers; do not coin shorthand, labels, or metaphors, and introduce a new term only when no existing term fits, explaining it on first use;
+  * give the premise a reader needs before the conclusion: what the code does now, which condition or requirement makes that a problem, and the practical consequence;
+  * use a concrete input, call sequence, or location from the reviewed material when it makes the issue clearer.
 
 ## Review Document
 
@@ -64,7 +67,7 @@ Write the results to `review_doc`; create it if it does not exist. Keep one bloc
 
 - Scope: <plan items and change range actually reviewed>
 - Conclusion: <concise overall conclusion>
-- Evidence gaps: <material gaps and unverified requirements, or "none">
+- Evidence gaps: <material gaps, unverified requirements and risks, or "none">
 
 ### <section>-R<n> [<severity>] [<status>] <title>
 
@@ -81,6 +84,7 @@ Fix order: <finding IDs grouped by dependencies>
 * Status is `open`, `fixed`, or `accepted`. New findings are `open`; `fixed` is set by whoever fixes the finding, and `accepted` only by the user or a developer who decides not to fix it.
 * List findings by severity; within the same severity, list architecture-level findings before code-organization findings.
 * Finding IDs are stable. When re-reviewing a section, keep existing IDs, re-verify `fixed` findings and reopen any that are not actually fixed, number new findings after the highest existing ID, and update the scope, conclusion, evidence gaps, and fix order.
+* Base fix order only on necessary implementation or validation dependencies supported by evidence. A preferred remediation approach alone does not make one finding a prerequisite for another.
 * Limit any "no issues found" conclusion to the material actually reviewed. If no worthwhile issues are found, say so directly. Do not manufacture findings to make the review appear more complete.
 
 ## Output
