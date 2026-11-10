@@ -91,7 +91,7 @@ Before concluding, inspect the final changes for:
 When the target is complete under the rule at the end of this skill, record the result for the active mode:
 
 - For a `plan_step`, mark it using the plan's completion convention without deleting or summarizing its text. If the plan defines no convention, leave the plan unchanged and state completion in the output.
-- For selected findings, set only the findings actually fixed to `fixed` in `review_doc`; leave other finding statuses and plan completion markers unchanged. Add unresolved findings to `plan_doc` only when the developer explicitly requests that recording.
+- For selected findings, set only the findings actually fixed to `fixed` in `review_doc`. In `Status note`, record the previous and new statuses for the latest change, the actual fix, and the verification performed and its result; add the field if absent. Preserve `Problem` and `Impact` as the finding's rationale. Leave other finding statuses and plan completion markers unchanged. Add unresolved findings to `plan_doc` only when the developer explicitly requests that recording.
 
 ## Output
 
